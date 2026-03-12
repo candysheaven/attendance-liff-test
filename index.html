@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LIFF診断（GitHub Pages）</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body{
+      font-family: system-ui, -apple-system, sans-serif;
+      background:#f7f7f8;
+      color:#111;
+      margin:0;
+      padding:16px;
+    }
+    .card{
+      background:#fff;
+      border:1px solid #ddd;
+      border-radius:12px;
+      padding:14px;
+      margin-bottom:12px;
+    }
+    h1{ font-size:20px; margin:0 0 12px; }
+    button{
+      padding:10px 14px;
+      border:1px solid #ccc;
+      border-radius:10px;
+      background:#fff;
+      cursor:pointer;
+      margin-right:8px;
+      margin-bottom:8px;
+    }
+    .primary{
+      background:#2563eb;
+      color:#fff;
+      border-color:#2563eb;
+    }
+    pre{
+      white-space:pre-wrap;
+      word-break:break-word;
+      background:#111;
+      color:#0f0;
+      padding:12px;
+      border-radius:10px;
+      min-height:240px;
+      font-size:12px;
+      line-height:1.5;
+    }
+    .small{
+      font-size:12px;
+      color:#666;
+      line-height:1.7;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>LIFF診断ページ（GitHub Pages）</h1>
+    <div class="small">
+      これは動作確認専用です。<br>
+      何が表示されたかをそのまま送ってください。
+    </div>
+  </div>
+
+  <div class="card">
+    <button class="primary" id="btnInit">初期化を再実行</button>
+    <button id="btnHello">API hello</button>
+    <button id="btnClose">閉じる</button>
+  </div>
+
+  <div class="card">
+    <pre id="log">開始前</pre>
+  </div>
+
+  <script>
+    const LIFF_ID = "2009200739-aFlG2Qqe";
+    const ENDPOINT = "https://script.google.com/macros/s/AKfycbzswqDcJv-Hu-MERE200xTH1fKj38ku9pU7EI04-6o0D6hWyIPC6svNxf5fhA_DNH1i/exec";
+
+    const $ = (id) => document.getElementById(id);
+
+    function log(msg) {
+      const now = new Date().toLocaleTimeString();
+      $("log").textContent += `\n[${now}] ${msg}`;
+    }
+
+    function clearLog() {
+      $("log").textContent = "";
+    }
+
+    function safeGetIdToken() {
+      try { return liff.getIDToken() || ""; } catch (e) { return ""; }
+    }
+
+    function safeGetAccessToken() {
+      try { return liff.getAccessToken() || ""; } catch (e) { return ""; }
+    }
+
+    function safeGetUserIdFromIdToken() {
+      try { return liff.getDecodedIDToken()?.sub || ""; } catch (e) { return ""; }
+    }
+
+    async function withTimeout(promise, ms, label) {
+      let timer;
+      const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(label + " timeout")), ms);
+      });
+      try {
+        return await Promise.race([promise, timeout]);
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    async function apiCall(action, payload = {}) {
+      const idToken = safeGetIdToken();
+      const accessToken = safeGetAccessToken();
+      const userId = safeGetUserIdFromIdToken();
+
+      const body = {
+        route: "api",
+        action,
+        userId: userId || "",
+        idToken: idToken || "",
+        accessToken: idToken ? "" : (accessToken || ""),
+        ...payload
+      };
+
+      log(`API送信: action=${action}`);
+
+      const resp = await withTimeout(fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      }), 12000, `fetch ${action}`);
+
+      const text = await withTimeout(resp.text(), 12000, `resp.text ${action}`);
+      log(`API応答(raw): ${text}`);
+
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        return { ok:false, message:"JSON parse error", raw:text };
+      }
+    }
+
+    async function runInit() {
+      clearLog();
+      log("診断開始");
+      log("LIFF_ID = " + LIFF_ID);
+      log("ENDPOINT = " + ENDPOINT);
+
+      try {
+        log("1. liff.init 開始");
+        await withTimeout(liff.init({ liffId: LIFF_ID }), 15000, "liff.init");
+        log("1. liff.init 成功");
+
+        const loggedIn = liff.isLoggedIn();
+        log("2. liff.isLoggedIn = " + loggedIn);
+
+        if (!loggedIn) {
+          log("3. 未ログインなので login を実行します");
+          liff.login({ redirectUri: location.href });
+          return;
+        }
+
+        log("3. getProfile 開始");
+        const profile = await withTimeout(liff.getProfile(), 10000, "liff.getProfile");
+        log("3. getProfile 成功");
+        log("displayName = " + (profile?.displayName || ""));
+        log("profile.userId = " + (profile?.userId || ""));
+
+        const idToken = safeGetIdToken();
+        const decodedUserId = safeGetUserIdFromIdToken();
+        log("4. idToken length = " + (idToken ? idToken.length : 0));
+        log("decoded userId = " + (decodedUserId || "(none)"));
+
+        log("5. hello API 開始");
+        const hello = await apiCall("hello");
+        log("5. hello API 完了");
+        log("hello result = " + JSON.stringify(hello));
+
+        log("診断完了");
+      } catch (e) {
+        log("ERROR = " + (e?.message || e));
+      }
+    }
+
+    $("btnInit").addEventListener("click", runInit);
+
+    $("btnHello").addEventListener("click", async () => {
+      try {
+        log("手動 hello 開始");
+        const res = await apiCall("hello");
+        log("手動 hello 結果 = " + JSON.stringify(res));
+      } catch (e) {
+        log("手動 hello ERROR = " + (e?.message || e));
+      }
+    });
+
+    $("btnClose").addEventListener("click", () => {
+      try { liff.closeWindow(); }
+      catch (e) { history.back(); }
+    });
+
+    runInit();
+  </script>
+</body>
+</html>
