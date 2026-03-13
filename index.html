@@ -3,219 +3,541 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>勤怠カレンダー</title>
+  <title>勤怠申請</title>
   <style>
     :root{
-      --bg:#f7f8fb;
+      --bg:#f4f5f8;
       --card:#ffffff;
-      --line:#e5e7eb;
-      --text:#111827;
-      --muted:#6b7280;
-      --accent:#111827;
-      --free:#e8f7ea;
-      --few:#fff3d8;
-      --full:#ffe1e1;
+      --line:#e3e5eb;
+      --text:#0f172a;
+      --muted:#7b8190;
+      --blue:#3168e0;
+      --blue-dark:#0d1b46;
+      --blue-light:#d9e7ff;
+      --green:#7de0a2;
+      --green-dot:#1ca855;
+      --red:#ef4d4d;
+      --red-dot:#ff6a6a;
+      --cyan:#58d2e8;
+      --gray:#d8dbe3;
+      --gray-text:#9aa0ae;
+      --shadow:0 6px 24px rgba(15,23,42,.06);
+      --radius-xl:26px;
+      --radius-lg:20px;
+      --radius-md:16px;
     }
+
     *{box-sizing:border-box}
-    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
-    body{padding:16px}
-    .wrap{max-width:760px;margin:0 auto}
+    html,body{margin:0;padding:0}
+    body{
+      background:var(--bg);
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      -webkit-font-smoothing:antialiased;
+      padding:14px;
+    }
+
+    .wrap{
+      max-width:820px;
+      margin:0 auto;
+      display:grid;
+      gap:16px;
+    }
+
     .card{
       background:var(--card);
       border:1px solid var(--line);
-      border-radius:18px;
-      padding:16px;
-      box-shadow:0 4px 20px rgba(0,0,0,.04);
+      border-radius:32px;
+      padding:18px;
+      box-shadow:var(--shadow);
     }
-    .head{
+
+    .screen-title{
+      font-size:18px;
+      font-weight:800;
+      text-align:center;
+      margin:2px 0 12px;
+    }
+
+    .top-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:16px;
+    }
+
+    .big-btn,
+    .mid-btn,
+    .seg-btn,
+    .nav-btn,
+    .submit-btn{
+      appearance:none;
+      border:none;
+      background:#fff;
+      color:var(--text);
+      cursor:pointer;
+      font-weight:800;
+      transition:.15s ease;
+    }
+
+    .big-btn,
+    .mid-btn{
+      min-height:84px;
+      border-radius:28px;
+      border:2px solid var(--line);
+      font-size:22px;
+    }
+
+    .mid-btn{
+      min-height:74px;
+      font-size:18px;
+    }
+
+    .big-btn.active,
+    .mid-btn.active,
+    .seg-btn.active{
+      background:var(--blue);
+      border-color:var(--blue);
+      color:#fff;
+    }
+
+    .top-grid.two{
+      margin-top:16px;
+    }
+
+    .seg-row{
+      display:grid;
+      grid-template-columns:1fr 1fr 1fr;
+      gap:16px;
+      margin-top:16px;
+    }
+
+    .seg-btn{
+      min-height:58px;
+      border-radius:999px;
+      border:2px solid var(--line);
+      font-size:16px;
+      color:var(--muted);
+      background:#fff;
+    }
+
+    .seg-btn.active{
+      color:#fff;
+    }
+
+    .calendar-head{
+      display:grid;
+      grid-template-columns:70px 1fr 70px;
+      align-items:center;
+      gap:10px;
+      margin-bottom:8px;
+    }
+
+    .nav-btn{
+      width:62px;
+      height:62px;
+      border-radius:999px;
+      border:2px solid var(--line);
+      font-size:32px;
+      line-height:1;
+      color:#30384a;
+      background:#fff;
+    }
+
+    .nav-btn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+    }
+
+    .ym-title{
+      text-align:center;
+      font-size:34px;
+      font-weight:900;
+      letter-spacing:.01em;
+      line-height:1.15;
+    }
+
+    .ym-range{
+      margin-top:4px;
+      text-align:center;
+      color:#6f7687;
+      font-size:18px;
+      font-weight:800;
+    }
+
+    .legend{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px 18px;
+      margin:14px 0 18px;
+      align-items:center;
+    }
+
+    .legend-item{
       display:flex;
       align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:12px;
-    }
-    .title{
-      font-size:20px;
-      font-weight:700;
-      letter-spacing:.02em;
-    }
-    .sub{
-      font-size:12px;
-      color:var(--muted);
-    }
-    .tabs{
-      display:flex;
       gap:8px;
-      margin:12px 0 16px;
-      flex-wrap:wrap;
+      color:#596173;
+      font-size:15px;
+      font-weight:800;
+      white-space:nowrap;
     }
-    .tab{
-      border:1px solid var(--line);
-      background:#fff;
-      padding:10px 14px;
+
+    .legend-dot{
+      width:18px;
+      height:18px;
       border-radius:999px;
-      cursor:pointer;
-      font-weight:700;
+      border:3px solid currentColor;
+      background:#fff;
+      flex:0 0 auto;
     }
-    .tab.active{
-      background:var(--accent);
-      color:#fff;
-      border-color:var(--accent);
-    }
-    .weekday-row,.calendar-row{
+
+    .legend-dot.green{color:var(--green)}
+    .legend-dot.red{color:var(--red); background:var(--red)}
+    .legend-dot.blue{color:var(--blue); background:var(--blue)}
+    .legend-dot.cyan{color:var(--cyan); background:var(--cyan)}
+    .legend-dot.gray{color:var(--gray); background:var(--gray)}
+
+    .weekday{
       display:grid;
       grid-template-columns:repeat(7,1fr);
-      gap:6px;
+      gap:10px;
+      margin-bottom:12px;
     }
-    .weekday{
+
+    .weekday div{
       text-align:center;
-      font-size:12px;
-      color:var(--muted);
-      padding:4px 0 8px;
-      font-weight:700;
+      color:#6e7585;
+      font-size:18px;
+      font-weight:900;
+      padding:4px 0;
     }
-    .cell{
-      min-height:84px;
-      border:1px solid var(--line);
-      border-radius:14px;
+
+    .calendar-grid{
+      display:grid;
+      grid-template-columns:repeat(7,1fr);
+      gap:12px;
+      min-height:180px;
+    }
+
+    .day-card,
+    .day-empty{
+      min-height:112px;
+      border-radius:26px;
+    }
+
+    .day-empty{
+      background:transparent;
+    }
+
+    .day-card{
+      position:relative;
+      border:3px solid var(--line);
       background:#fff;
-      padding:8px;
-      cursor:pointer;
+      padding:10px 10px 12px;
       display:flex;
       flex-direction:column;
       justify-content:flex-start;
-      gap:4px;
+      align-items:flex-start;
+      user-select:none;
+      cursor:pointer;
+      transition:.12s ease;
+      overflow:hidden;
     }
-    .cell.empty{
-      background:transparent;
-      border:none;
-      cursor:default;
+
+    .day-card .day-num{
+      font-size:24px;
+      font-weight:900;
+      line-height:1;
+      letter-spacing:.01em;
     }
-    .cell.free{background:var(--free)}
-    .cell.few{background:var(--few)}
-    .cell.full{background:var(--full)}
-    .cell.selected{
-      outline:2px solid var(--accent);
-      outline-offset:1px;
-    }
-    .day{
-      font-size:14px;
-      font-weight:700;
-    }
-    .meta{
-      font-size:12px;
-      color:#374151;
-    }
-    .mine{
-      font-size:12px;
-      font-weight:700;
-      color:#111827;
+
+    .day-card .day-label{
       margin-top:auto;
+      font-size:16px;
+      font-weight:900;
+      line-height:1.15;
+      white-space:pre-line;
     }
-    .loading{
-      padding:18px 0;
+
+    .day-card .day-dot{
+      position:absolute;
+      top:10px;
+      right:10px;
+      width:16px;
+      height:16px;
+      border-radius:999px;
+      background:#d0d3db;
+    }
+
+    .day-card.selected{
+      box-shadow:0 0 0 4px var(--blue-light) inset;
+    }
+
+    .day-card.state-disabled{
+      border-color:var(--gray);
+      background:#f1f2f5;
+      color:var(--gray-text);
+    }
+    .day-card.state-disabled .day-dot{
+      background:#cfd3dc;
+    }
+
+    .day-card.state-free{
+      border-color:var(--green);
+      background:#fff;
+      color:var(--text);
+    }
+    .day-card.state-free .day-dot{
+      background:var(--green-dot);
+    }
+
+    .day-card.state-full{
+      border-color:var(--red);
+      background:#fff;
+      color:#8f2020;
+    }
+    .day-card.state-full .day-dot{
+      background:var(--red-dot);
+    }
+
+    .day-card.state-my-kokyu{
+      border-color:var(--blue);
+      background:var(--blue);
+      color:#fff;
+    }
+    .day-card.state-my-kokyu .day-dot{
+      background:rgba(255,255,255,.85);
+    }
+
+    .day-card.state-my-chikou{
+      border-color:#9fd7ff;
+      background:#f2f4f8;
+      color:#98a1af;
+    }
+    .day-card.state-my-chikou .day-dot{
+      background:#cfd5df;
+    }
+
+    .day-card.state-few{
+      border-color:#f2c94c;
+      background:#fffaf0;
+      color:#8a6a11;
+    }
+    .day-card.state-few .day-dot{
+      background:#f2c94c;
+    }
+
+    .note-box{
+      margin-top:18px;
+      border:2px solid #c9dcff;
+      background:#eef5ff;
+      color:var(--blue);
+      border-radius:28px;
+      padding:16px 20px;
+      font-size:18px;
+      font-weight:900;
       text-align:center;
-      color:var(--muted);
-      font-size:13px;
     }
-    .panel{
-      margin-top:14px;
+
+    .action-card{
       display:grid;
-      gap:10px;
+      gap:12px;
     }
-    .row{
+
+    .selected-box{
+      border:2px solid var(--line);
+      border-radius:22px;
+      padding:14px 16px;
+      background:#f9fafc;
+      font-size:18px;
+      font-weight:800;
+    }
+
+    .field-grid{
       display:grid;
       grid-template-columns:1fr 1fr;
-      gap:10px;
+      gap:12px;
     }
+
     .field{
       display:grid;
       gap:6px;
     }
-    label{
-      font-size:12px;
-      color:var(--muted);
-      font-weight:700;
-    }
-    select,button{
-      width:100%;
-      min-height:44px;
-      border-radius:12px;
-      border:1px solid var(--line);
-      background:#fff;
-      padding:0 12px;
+
+    .field label{
+      color:#6e7585;
       font-size:14px;
+      font-weight:900;
+      padding-left:2px;
     }
-    button{
-      background:var(--accent);
+
+    select{
+      width:100%;
+      min-height:56px;
+      border-radius:18px;
+      border:2px solid var(--line);
+      background:#fff;
+      color:var(--text);
+      font-size:18px;
+      font-weight:800;
+      padding:0 16px;
+      outline:none;
+    }
+
+    .submit-btn{
+      min-height:62px;
+      border-radius:22px;
+      background:var(--blue-dark);
       color:#fff;
-      border-color:var(--accent);
-      font-weight:700;
-      cursor:pointer;
+      font-size:20px;
+      font-weight:900;
     }
-    button:disabled{
-      opacity:.6;
+
+    .submit-btn:disabled{
+      opacity:.55;
       cursor:not-allowed;
     }
-    .selected-box{
-      padding:12px;
-      border-radius:12px;
-      background:#f9fafb;
-      border:1px solid var(--line);
-      font-size:14px;
+
+    .section{
+      display:none;
     }
+    .section.active{
+      display:block;
+    }
+
+    .placeholder{
+      padding:22px;
+      border:2px dashed var(--line);
+      border-radius:24px;
+      color:#6e7585;
+      font-size:16px;
+      font-weight:800;
+      line-height:1.7;
+      background:#fafbfe;
+    }
+
     .toast{
       position:fixed;
       left:50%;
       bottom:20px;
       transform:translateX(-50%);
-      background:#111827;
+      background:var(--blue-dark);
       color:#fff;
-      padding:10px 14px;
+      padding:14px 18px;
       border-radius:999px;
+      font-size:15px;
+      font-weight:800;
       opacity:0;
       pointer-events:none;
-      transition:.2s;
-      font-size:13px;
+      transition:.18s ease;
       z-index:9999;
+      max-width:min(86vw,520px);
     }
-    .toast.show{opacity:1}
-    @media (max-width:520px){
-      .cell{min-height:76px;padding:6px}
-      .row{grid-template-columns:1fr}
+    .toast.show{
+      opacity:1;
+    }
+
+    .loading{
+      padding:24px 0;
+      text-align:center;
+      color:#6e7585;
+      font-size:15px;
+      font-weight:800;
+    }
+
+    .small-user{
+      text-align:right;
+      color:#7a8090;
+      font-size:13px;
+      font-weight:800;
+      margin-top:4px;
+    }
+
+    @media (max-width:720px){
+      .card{padding:16px}
+      .big-btn,.mid-btn{font-size:17px; min-height:74px}
+      .mid-btn{min-height:66px; font-size:16px}
+      .seg-row{gap:10px}
+      .seg-btn{min-height:54px; font-size:15px}
+      .calendar-head{grid-template-columns:56px 1fr 56px}
+      .nav-btn{width:52px;height:52px;font-size:28px}
+      .ym-title{font-size:28px}
+      .ym-range{font-size:15px}
+      .legend{gap:8px 12px}
+      .legend-item{font-size:13px}
+      .weekday{gap:8px}
+      .weekday div{font-size:15px}
+      .calendar-grid{gap:8px}
+      .day-card,.day-empty{min-height:96px;border-radius:22px}
+      .day-card .day-num{font-size:21px}
+      .day-card .day-label{font-size:14px}
+      .note-box{font-size:15px;padding:14px 16px}
+      .field-grid{grid-template-columns:1fr}
+      .selected-box{font-size:16px}
+      select{font-size:16px}
+      .submit-btn{font-size:18px}
     }
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="card">
-      <div class="head">
-        <div>
-          <div class="title">勤怠カレンダー</div>
-          <div class="sub">初回は当月のみ読込 / 当月＋2か月表示 / 月キャッシュ対応</div>
+      <div class="screen-title">勤怠申請</div>
+
+      <div class="top-grid">
+        <button id="btnCurrentMonth" class="big-btn active" type="button">今月</button>
+        <button id="btnNextMonth" class="big-btn" type="button">来月</button>
+      </div>
+
+      <div class="top-grid two">
+        <button id="btnStatusShortcut" class="mid-btn" type="button">申請状況</button>
+        <button id="btnHelpShortcut" class="mid-btn" type="button">使い方</button>
+      </div>
+
+      <div class="seg-row">
+        <button id="tabCalendar" class="seg-btn active" type="button">カレンダー</button>
+        <button id="tabStatus" class="seg-btn" type="button">状況</button>
+        <button id="tabHelp" class="seg-btn" type="button">使い方</button>
+      </div>
+
+      <div class="small-user" id="userBadge">user: -</div>
+    </div>
+
+    <div id="sectionCalendar" class="section active">
+      <div class="card">
+        <div class="calendar-head">
+          <button id="prevMonthBtn" class="nav-btn" type="button" aria-label="前の月">&lsaquo;</button>
+
+          <div>
+            <div id="ymTitle" class="ym-title">----</div>
+            <div id="ymRange" class="ym-range">UI操作対象：----</div>
+          </div>
+
+          <button id="nextMonthBtn" class="nav-btn" type="button" aria-label="次の月">&rsaquo;</button>
         </div>
-        <div id="userBadge" class="sub">user: -</div>
+
+        <div class="legend">
+          <div class="legend-item"><span class="legend-dot green"></span>空きあり</div>
+          <div class="legend-item"><span class="legend-dot red"></span>満枠</div>
+          <div class="legend-item"><span class="legend-dot blue"></span>公休申請済み</div>
+          <div class="legend-item"><span class="legend-dot cyan"></span>遅公申請済み</div>
+          <div class="legend-item"><span class="legend-dot gray"></span>申請不可/範囲外</div>
+        </div>
+
+        <div class="weekday">
+          <div>日</div><div>月</div><div>火</div><div>水</div><div>木</div><div>金</div><div>土</div>
+        </div>
+
+        <div id="calendarLoading" class="loading">読み込み中...</div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+
+        <div class="note-box">日付をタップすると、その日の申請・変更・取消ができます。</div>
       </div>
 
-      <div id="monthTabs" class="tabs"></div>
+      <div class="card action-card">
+        <div class="selected-box">選択日：<strong id="selectedDate">未選択</strong></div>
 
-      <div class="weekday-row">
-        <div class="weekday">日</div>
-        <div class="weekday">月</div>
-        <div class="weekday">火</div>
-        <div class="weekday">水</div>
-        <div class="weekday">木</div>
-        <div class="weekday">金</div>
-        <div class="weekday">土</div>
-      </div>
-
-      <div id="calendarLoading" class="loading">読み込み中...</div>
-      <div id="calendarBody"></div>
-
-      <div class="panel">
-        <div class="selected-box">選択日: <strong id="selectedDate">未選択</strong></div>
-
-        <div class="row">
+        <div class="field-grid">
           <div class="field">
             <label for="requestType">申請種別</label>
             <select id="requestType">
@@ -235,7 +557,30 @@
           </div>
         </div>
 
-        <button id="submitBtn" type="button">送信する</button>
+        <button id="submitBtn" class="submit-btn" type="button">送信する</button>
+      </div>
+    </div>
+
+    <div id="sectionStatus" class="section">
+      <div class="card">
+        <div class="placeholder">
+          ここは「状況」エリアです。<br>
+          今回は見た目を維持したまま軽量化するのが主目的なので、まずはカレンダーUI優先で組んでいます。<br>
+          既存の状況表示が別ロジックで動いている場合は、この枠の中身だけ後から差し戻せます。
+        </div>
+      </div>
+    </div>
+
+    <div id="sectionHelp" class="section">
+      <div class="card">
+        <div class="placeholder">
+          使い方<br><br>
+          ・今月/来月ボタン、または左右矢印で月を切り替えます。<br>
+          ・表示対象は「当月＋2か月先まで」です。<br>
+          ・初回は当月のみ読み込み、開いた月だけ後から取得します。<br>
+          ・一度開いた月はメモリキャッシュされます。<br>
+          ・申請/取消後はその日だけ画面更新します。
+        </div>
       </div>
     </div>
   </div>
@@ -244,33 +589,37 @@
 
   <script>
     const CONFIG = {
-      MAX_VISIBLE_MONTHS: 3,   // 当月 + 2か月先
+      MAX_VISIBLE_MONTHS: 3, // 当月 + 2か月先
       DAY_LIMIT: 3,
-      RELAY_BASE_URL: '',      // 例: 'https://xxxxx.workers.dev'
-      LIFF_ID: ''              // 使っているなら入れる。不要なら空でOK
+      // ここは必ずあなたの attendance-relay URL に変更
+      // 例: 'https://attendance-relay.xxxxx.workers.dev'
+      RELAY_BASE_URL: 'https://attendance-relay.heaven1059-gd.workers.dev/',
+      LIFF_ID: ''
     };
 
     const state = {
       userId: '',
       visibleMonths: [],
+      activeIndex: 0,
       activeYm: '',
       selectedDate: '',
-      monthCache: new Map(),
-      loadingPromises: new Map()
+      monthCache: new Map(),      // ③ 月データキャッシュ
+      loadingPromises: new Map(),
+      currentView: 'calendar'
     };
 
     document.addEventListener('DOMContentLoaded', async () => {
       try {
         await initUser();
-        initVisibleMonths();
-        renderMonthTabs();
+        buildVisibleMonths();
+        renderMonthShortcuts();
         bindEvents();
 
-        const firstYm = state.visibleMonths[0];
-        state.activeYm = firstYm;
-        setActiveTab(firstYm);
-
-        await openMonth(firstYm); // 初回は当月だけ
+        // ② 初回は当月だけ読み込む
+        state.activeIndex = 0;
+        state.activeYm = state.visibleMonths[0];
+        updateMonthButtons();
+        await openMonth(state.activeYm);
       } catch (err) {
         console.error(err);
         showToast(err.message || '初期化に失敗しました');
@@ -278,75 +627,142 @@
     });
 
     async function initUser() {
-      // LIFF未使用でも動くようにしている
-      const q = new URLSearchParams(location.search);
-      const queryUserId = q.get('userId');
-      if (queryUserId) {
-        state.userId = queryUserId;
-      } else {
-        state.userId = localStorage.getItem('attendance_user_id') || '';
+      const params = new URLSearchParams(location.search);
+
+      // 既存の query / localStorage も拾う
+      state.userId =
+        params.get('userId') ||
+        params.get('uid') ||
+        localStorage.getItem('attendance_user_id') ||
+        localStorage.getItem('line_user_id') ||
+        '';
+
+      // LIFF が既に読み込まれている環境なら補助的に取得
+      if (!state.userId && CONFIG.LIFF_ID && window.liff) {
+        try {
+          await liff.init({ liffId: CONFIG.LIFF_ID });
+          if (liff.isLoggedIn()) {
+            const profile = await liff.getProfile();
+            state.userId = profile?.userId || '';
+          }
+        } catch (e) {
+          console.warn('LIFF init skipped:', e);
+        }
       }
 
-      const badge = document.getElementById('userBadge');
-      badge.textContent = 'user: ' + (state.userId || '-');
+      if (state.userId) {
+        localStorage.setItem('attendance_user_id', state.userId);
+      }
+
+      document.getElementById('userBadge').textContent = 'user: ' + (state.userId || '-');
     }
 
-    function initVisibleMonths() {
+    function buildVisibleMonths() {
       const now = new Date();
       const base = new Date(now.getFullYear(), now.getMonth(), 1);
       state.visibleMonths = [];
 
+      // ① 当月＋2か月先まで
       for (let i = 0; i < CONFIG.MAX_VISIBLE_MONTHS; i++) {
         const d = new Date(base.getFullYear(), base.getMonth() + i, 1);
         state.visibleMonths.push(formatYm(d));
       }
     }
 
-    function renderMonthTabs() {
-      const el = document.getElementById('monthTabs');
-      el.innerHTML = state.visibleMonths.map(ym => {
-        const [y,m] = ym.split('-');
-        return `<button class="tab" data-ym="${ym}">${Number(m)}月</button>`;
-      }).join('');
+    function renderMonthShortcuts() {
+      const currentBtn = document.getElementById('btnCurrentMonth');
+      const nextBtn = document.getElementById('btnNextMonth');
+
+      currentBtn.textContent = '今月';
+      nextBtn.textContent = '来月';
     }
 
     function bindEvents() {
-      document.getElementById('monthTabs').addEventListener('click', async (e) => {
-        const btn = e.target.closest('.tab');
-        if (!btn) return;
-        const ym = btn.dataset.ym;
-        if (!ym || ym === state.activeYm) return;
-
-        state.activeYm = ym;
-        setActiveTab(ym);
-        await openMonth(ym);
+      document.getElementById('btnCurrentMonth').addEventListener('click', async () => {
+        await setActiveMonthByIndex(0);
+        switchView('calendar');
       });
 
-      document.getElementById('calendarBody').addEventListener('click', (e) => {
-        const cell = e.target.closest('.cell[data-date]');
-        if (!cell) return;
-        const ymd = cell.dataset.date;
-        selectDate(ymd);
+      document.getElementById('btnNextMonth').addEventListener('click', async () => {
+        const nextIndex = Math.min(1, state.visibleMonths.length - 1);
+        await setActiveMonthByIndex(nextIndex);
+        switchView('calendar');
+      });
+
+      document.getElementById('btnStatusShortcut').addEventListener('click', () => switchView('status'));
+      document.getElementById('btnHelpShortcut').addEventListener('click', () => switchView('help'));
+
+      document.getElementById('tabCalendar').addEventListener('click', () => switchView('calendar'));
+      document.getElementById('tabStatus').addEventListener('click', () => switchView('status'));
+      document.getElementById('tabHelp').addEventListener('click', () => switchView('help'));
+
+      document.getElementById('prevMonthBtn').addEventListener('click', async () => {
+        if (state.activeIndex <= 0) return;
+        await setActiveMonthByIndex(state.activeIndex - 1);
+      });
+
+      document.getElementById('nextMonthBtn').addEventListener('click', async () => {
+        if (state.activeIndex >= state.visibleMonths.length - 1) return;
+        await setActiveMonthByIndex(state.activeIndex + 1);
+      });
+
+      document.getElementById('calendarGrid').addEventListener('click', (e) => {
+        const card = e.target.closest('.day-card[data-date]');
+        if (!card) return;
+        selectDate(card.dataset.date);
       });
 
       document.getElementById('submitBtn').addEventListener('click', submitRequest);
     }
 
-    function setActiveTab(ym) {
-      document.querySelectorAll('.tab').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.ym === ym);
-      });
+    function switchView(viewName) {
+      state.currentView = viewName;
+
+      document.getElementById('sectionCalendar').classList.toggle('active', viewName === 'calendar');
+      document.getElementById('sectionStatus').classList.toggle('active', viewName === 'status');
+      document.getElementById('sectionHelp').classList.toggle('active', viewName === 'help');
+
+      document.getElementById('tabCalendar').classList.toggle('active', viewName === 'calendar');
+      document.getElementById('tabStatus').classList.toggle('active', viewName === 'status');
+      document.getElementById('tabHelp').classList.toggle('active', viewName === 'help');
+    }
+
+    async function setActiveMonthByIndex(index) {
+      if (index < 0 || index >= state.visibleMonths.length) return;
+
+      state.activeIndex = index;
+      state.activeYm = state.visibleMonths[index];
+      updateMonthButtons();
+      await openMonth(state.activeYm);
+    }
+
+    function updateMonthButtons() {
+      const currentBtn = document.getElementById('btnCurrentMonth');
+      const nextBtn = document.getElementById('btnNextMonth');
+
+      currentBtn.classList.toggle('active', state.activeIndex === 0);
+      nextBtn.classList.toggle('active', state.activeIndex === 1);
+
+      document.getElementById('prevMonthBtn').disabled = state.activeIndex <= 0;
+      document.getElementById('nextMonthBtn').disabled = state.activeIndex >= state.visibleMonths.length - 1;
     }
 
     async function openMonth(ym) {
       setCalendarLoading(true);
+
       try {
         let monthData = state.monthCache.get(ym);
+
+        // ③ キャッシュ優先
         if (!monthData) {
           monthData = await fetchMonthData(ym);
           state.monthCache.set(ym, monthData);
         }
-        renderMonth(monthData);
+
+        renderCalendar(monthData);
+      } catch (err) {
+        console.error(err);
+        showToast(err.message || '月データ取得失敗');
       } finally {
         setCalendarLoading(false);
       }
@@ -365,11 +781,13 @@
         const qs = new URLSearchParams({ ym });
         if (state.userId) qs.set('userId', state.userId);
 
-        const res = await fetch(`${CONFIG.RELAY_BASE_URL}/api/calendar-month?${qs.toString()}`, {
-          method: 'GET'
-        });
+        const url = buildApiUrl(`/api/calendar-month?${qs.toString()}`);
+        const res = await fetch(url, { method: 'GET' });
         const json = await res.json();
-        if (!json.ok) throw new Error(json.message || '月データ取得失敗');
+
+        if (!json.ok) {
+          throw new Error(json.message || 'calendar-month failed');
+        }
 
         state.monthCache.set(ym, json);
         return json;
@@ -383,69 +801,130 @@
       }
     }
 
-    function renderMonth(monthData) {
-      const el = document.getElementById('calendarBody');
-      const ym = monthData.ym;
+    function renderCalendar(monthData) {
+      const ym = monthData.ym || state.activeYm;
       const [year, month] = ym.split('-').map(Number);
+
+      document.getElementById('ymTitle').textContent = `${year}/${String(month).padStart(2, '0')}`;
+      document.getElementById('ymRange').textContent =
+        `UI操作対象：${toSlashYm(state.visibleMonths[0])}〜${toSlashYm(state.visibleMonths[state.visibleMonths.length - 1])}`;
 
       const firstDay = new Date(year, month - 1, 1);
       const lastDay = new Date(year, month, 0);
-      const firstWeekday = firstDay.getDay();
       const daysInMonth = lastDay.getDate();
+      const startWeekday = firstDay.getDay();
 
+      const grid = document.getElementById('calendarGrid');
       let html = '';
-      let dayCounter = 1;
 
-      for (let row = 0; row < 6; row++) {
-        html += `<div class="calendar-row">`;
-
-        for (let col = 0; col < 7; col++) {
-          const idx = row * 7 + col;
-
-          if (idx < firstWeekday || dayCounter > daysInMonth) {
-            html += `<div class="cell empty"></div>`;
-            continue;
-          }
-
-          const date = new Date(year, month - 1, dayCounter);
-          const ymd = formatYmd(date);
-          const info = monthData.days?.[ymd] || {
-            date: ymd,
-            count: 0,
-            limit: CONFIG.DAY_LIMIT,
-            status: 'free',
-            myStatus: null
-          };
-
-          html += renderDayCell(info, dayCounter, ymd === state.selectedDate);
-          dayCounter++;
-        }
-
-        html += `</div>`;
-        if (dayCounter > daysInMonth) break;
+      for (let i = 0; i < startWeekday; i++) {
+        html += `<div class="day-empty"></div>`;
       }
 
-      el.innerHTML = html;
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month - 1, day);
+        const ymd = formatYmd(date);
+
+        const raw = monthData.days?.[ymd] || null;
+        const info = normalizeDayInfo(ymd, raw);
+
+        html += renderDayCard(info, day, state.selectedDate === ymd);
+      }
+
+      grid.innerHTML = html;
     }
 
-    function renderDayCell(info, dayNum, selected) {
-      const klass = info.status || 'free';
-      const mine = info.myStatus ? `<div class="mine">${escapeHtml(info.myStatus)}</div>` : '';
+    function renderDayCard(info, dayNum, selected) {
+      const ui = classifyDay(info);
+
       return `
-        <div class="cell ${klass} ${selected ? 'selected' : ''}" data-date="${info.date}">
-          <div class="day">${dayNum}</div>
-          <div class="meta">${Number(info.count || 0)}/${Number(info.limit || CONFIG.DAY_LIMIT)}</div>
-          ${mine}
+        <div class="day-card ${ui.className} ${selected ? 'selected' : ''}" data-date="${info.date}">
+          <div class="day-dot"></div>
+          <div class="day-num">${dayNum}</div>
+          <div class="day-label">${ui.label}</div>
         </div>
       `;
+    }
+
+    function normalizeDayInfo(date, raw) {
+      const item = raw || {};
+
+      const count = Number(item.count ?? item.used ?? item.slots ?? 0);
+      const limit = Number(item.limit ?? CONFIG.DAY_LIMIT);
+
+      let status = item.status ?? '';
+      const myStatus =
+        item.myStatus ??
+        item.requestType ??
+        item.statusName ??
+        item.mine ??
+        null;
+
+      if (!status) {
+        if (count >= limit) status = 'full';
+        else if (count === limit - 1 && limit > 1) status = 'few';
+        else status = 'free';
+      }
+
+      return {
+        date,
+        count,
+        limit,
+        status,
+        myStatus
+      };
+    }
+
+    function classifyDay(info) {
+      const my = String(info.myStatus || '');
+
+      if (my.includes('公休')) {
+        return {
+          className: 'state-my-kokyu',
+          label: '公休'
+        };
+      }
+
+      if (my.includes('遅公')) {
+        return {
+          className: 'state-my-chikou',
+          label: '遅公のみ'
+        };
+      }
+
+      if (['disabled', 'blocked', 'ng', 'unavailable', 'outside'].includes(String(info.status))) {
+        return {
+          className: 'state-disabled',
+          label: '不可'
+        };
+      }
+
+      if (String(info.status) === 'full' || Number(info.count) >= Number(info.limit)) {
+        return {
+          className: 'state-full',
+          label: '満枠'
+        };
+      }
+
+      if (String(info.status) === 'few') {
+        return {
+          className: 'state-few',
+          label: ''
+        };
+      }
+
+      return {
+        className: 'state-free',
+        label: ''
+      };
     }
 
     function selectDate(ymd) {
       state.selectedDate = ymd;
       document.getElementById('selectedDate').textContent = ymd;
 
-      document.querySelectorAll('.cell[data-date]').forEach(cell => {
-        cell.classList.toggle('selected', cell.dataset.date === ymd);
+      document.querySelectorAll('.day-card[data-date]').forEach(el => {
+        el.classList.toggle('selected', el.dataset.date === ymd);
       });
     }
 
@@ -463,7 +942,8 @@
       btn.textContent = '送信中...';
 
       try {
-        const res = await fetch(`${CONFIG.RELAY_BASE_URL}/api/request`, {
+        const url = buildApiUrl('/api/request');
+        const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -475,23 +955,26 @@
         });
 
         const json = await res.json();
-        if (!json.ok) throw new Error(json.message || '送信失敗');
+
+        if (!json.ok) {
+          throw new Error(json.message || 'request failed');
+        }
 
         showToast(json.message || '受付OK');
 
-        // ④ 該当日だけ差し替え
+        // ④ 申請後は該当日だけ差し替え
         if (json.updatedDay) {
           patchDayInCache(json.updatedDay);
           patchDayCell(json.updatedDay);
         } else {
-          // 万一 updatedDay が来ない場合は、その月だけ再読込
           const ym = state.selectedDate.slice(0, 7);
-          const monthData = await fetchMonthData(ym, true);
-          renderMonth(monthData);
+          const refreshed = await fetchMonthData(ym, true);
+          renderCalendar(refreshed);
         }
+
       } catch (err) {
         console.error(err);
-        showToast(err.message || '送信に失敗しました');
+        showToast(err.message || '送信失敗');
       } finally {
         btn.disabled = false;
         btn.textContent = '送信する';
@@ -502,17 +985,19 @@
       const ym = updatedDay.date.slice(0, 7);
       const monthData = state.monthCache.get(ym);
       if (!monthData) return;
+
       if (!monthData.days) monthData.days = {};
       monthData.days[updatedDay.date] = updatedDay;
       state.monthCache.set(ym, monthData);
     }
 
     function patchDayCell(updatedDay) {
-      const cell = document.querySelector(`.cell[data-date="${updatedDay.date}"]`);
+      const cell = document.querySelector(`.day-card[data-date="${updatedDay.date}"]`);
       if (!cell) return;
 
-      const dayText = cell.querySelector('.day')?.textContent || updatedDay.date.slice(-2);
-      const html = renderDayCell(updatedDay, Number(dayText), updatedDay.date === state.selectedDate);
+      const dayNum = Number(cell.querySelector('.day-num')?.textContent || updatedDay.date.slice(-2));
+      const normalized = normalizeDayInfo(updatedDay.date, updatedDay);
+      const html = renderDayCard(normalized, dayNum, state.selectedDate === updatedDay.date);
 
       const tmp = document.createElement('div');
       tmp.innerHTML = html.trim();
@@ -524,12 +1009,18 @@
       document.getElementById('calendarLoading').style.display = flag ? 'block' : 'none';
     }
 
-    function showToast(message) {
-      const el = document.getElementById('toast');
-      el.textContent = message;
-      el.classList.add('show');
-      clearTimeout(showToast._timer);
-      showToast._timer = setTimeout(() => el.classList.remove('show'), 1800);
+    function buildApiUrl(path) {
+      const base = String(CONFIG.RELAY_BASE_URL || '').trim().replace(/\/+$/, '');
+
+      // GitHub Pages で空のままだと前回のように失敗する
+      if (!base) {
+        if (location.hostname.endsWith('github.io')) {
+          throw new Error('RELAY_BASE_URL に attendance-relay のURLを設定してください');
+        }
+        return path;
+      }
+
+      return base + path;
     }
 
     function formatYm(date) {
@@ -545,13 +1036,18 @@
       return `${y}-${m}-${d}`;
     }
 
-    function escapeHtml(str) {
-      return String(str)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
+    function toSlashYm(ym) {
+      return String(ym).replace('-', '/');
+    }
+
+    function showToast(message) {
+      const el = document.getElementById('toast');
+      el.textContent = message;
+      el.classList.add('show');
+      clearTimeout(showToast._timer);
+      showToast._timer = setTimeout(() => {
+        el.classList.remove('show');
+      }, 1900);
     }
   </script>
 </body>
