@@ -2,115 +2,900 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>LIFF診断（GitHub Pages）</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>勤怠申請</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
   <style>
-    body{
-      font-family: system-ui, -apple-system, sans-serif;
-      background:#f7f7f8;
-      color:#111;
+    :root{
+      --bg:#f5f7fb;
+      --card:#ffffff;
+      --line:#e5e7eb;
+      --text:#111827;
+      --muted:#6b7280;
+      --primary:#2563eb;
+      --primary-soft:#eff6ff;
+      --success:#16a34a;
+      --success-soft:#f0fdf4;
+      --danger:#dc2626;
+      --danger-soft:#fef2f2;
+      --off:#2563eb;
+      --late:#67e8f9;
+      --disabled:#f3f4f6;
+      --shadow:0 8px 24px rgba(17,24,39,.08);
+      --radius:18px;
+    }
+
+    *{ box-sizing:border-box; }
+
+    html,body{
       margin:0;
-      padding:16px;
+      padding:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+      -webkit-tap-highlight-color:transparent;
     }
-    .card{
-      background:#fff;
-      border:1px solid #ddd;
-      border-radius:12px;
-      padding:14px;
-      margin-bottom:12px;
+
+    body{
+      padding:
+        calc(env(safe-area-inset-top, 0px) + 12px)
+        14px
+        calc(env(safe-area-inset-bottom, 0px) + 18px);
     }
-    h1{ font-size:20px; margin:0 0 12px; }
-    button{
-      padding:10px 14px;
-      border:1px solid #ccc;
-      border-radius:10px;
-      background:#fff;
-      cursor:pointer;
-      margin-right:8px;
-      margin-bottom:8px;
+
+    .app{
+      max-width:760px;
+      margin:0 auto;
     }
-    .primary{
-      background:#2563eb;
-      color:#fff;
-      border-color:#2563eb;
+
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:14px;
     }
-    pre{
-      white-space:pre-wrap;
-      word-break:break-word;
-      background:#111;
-      color:#0f0;
-      padding:12px;
-      border-radius:10px;
-      min-height:240px;
+
+    .titlebox{
+      min-width:0;
+    }
+
+    .title{
+      font-size:20px;
+      font-weight:800;
+      line-height:1.2;
+      margin:0;
+    }
+
+    .subtitle{
+      margin-top:4px;
+      color:var(--muted);
       font-size:12px;
       line-height:1.5;
+      word-break:break-all;
     }
-    .small{
+
+    .iconbtn{
+      appearance:none;
+      border:none;
+      background:#fff;
+      border:1px solid var(--line);
+      color:var(--text);
+      min-width:42px;
+      height:42px;
+      padding:0 14px;
+      border-radius:999px;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow:var(--shadow);
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:14px;
+    }
+
+    .stack{ display:grid; gap:12px; }
+
+    .summary{
+      display:grid;
+      gap:12px;
+    }
+
+    .summary-top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+    }
+
+    .name{
+      font-size:18px;
+      font-weight:800;
+      line-height:1.3;
+      word-break:break-all;
+    }
+
+    .role{
+      margin-top:4px;
+      color:var(--muted);
       font-size:12px;
-      color:#666;
+      font-weight:600;
+    }
+
+    .chips{
+      display:grid;
+      grid-template-columns:repeat(3, minmax(0,1fr));
+      gap:10px;
+    }
+
+    .chip{
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:10px 12px;
+      background:#fff;
+      min-width:0;
+    }
+
+    .chip-label{
+      font-size:11px;
+      color:var(--muted);
+      margin-bottom:4px;
+      font-weight:700;
+    }
+
+    .chip-value{
+      font-size:18px;
+      font-weight:800;
+      line-height:1.2;
+      white-space:nowrap;
+    }
+
+    .toolbar{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0,1fr));
+      gap:8px;
+    }
+
+    .btn{
+      appearance:none;
+      border:none;
+      background:#fff;
+      border:1px solid var(--line);
+      color:var(--text);
+      padding:11px 10px;
+      border-radius:14px;
+      font-weight:700;
+      font-size:13px;
+      cursor:pointer;
+    }
+
+    .btn.primary{
+      background:var(--primary);
+      color:#fff;
+      border-color:var(--primary);
+    }
+
+    .btn.soft{
+      background:var(--primary-soft);
+      color:var(--primary);
+      border-color:#bfdbfe;
+    }
+
+    .btn.danger{
+      background:var(--danger);
+      color:#fff;
+      border-color:var(--danger);
+    }
+
+    .btn:disabled,
+    .iconbtn:disabled,
+    .navbtn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+    }
+
+    .seg{
+      display:grid;
+      grid-template-columns:repeat(3, minmax(0,1fr));
+      gap:8px;
+      margin-top:2px;
+    }
+
+    .segbtn{
+      appearance:none;
+      border:none;
+      background:#fff;
+      border:1px solid var(--line);
+      color:var(--muted);
+      padding:11px 10px;
+      border-radius:999px;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .segbtn.active{
+      background:var(--primary);
+      color:#fff;
+      border-color:var(--primary);
+    }
+
+    .view{ display:none; }
+    .view.active{ display:block; }
+
+    .monthbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:12px;
+    }
+
+    .monthcenter{
+      min-width:0;
+      flex:1;
+      text-align:center;
+    }
+
+    .monthlabel{
+      font-size:20px;
+      font-weight:800;
+      line-height:1.2;
+    }
+
+    .monthsub{
+      font-size:12px;
+      color:var(--muted);
+      margin-top:3px;
+      font-weight:700;
+    }
+
+    .navbtn{
+      appearance:none;
+      border:none;
+      background:#fff;
+      border:1px solid var(--line);
+      color:var(--text);
+      width:42px;
+      height:42px;
+      border-radius:999px;
+      font-size:18px;
+      font-weight:800;
+      cursor:pointer;
+      flex:0 0 auto;
+    }
+
+    .legend{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px 10px;
+      margin-bottom:12px;
+    }
+
+    .legend-item{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      color:var(--muted);
+      font-size:11px;
+      font-weight:700;
+      line-height:1;
+    }
+
+    .dot{
+      width:12px;
+      height:12px;
+      border-radius:999px;
+      border:1px solid rgba(0,0,0,.08);
+      flex:0 0 auto;
+    }
+
+    .dot.available{ background:#ffffff; border-color:#86efac; }
+    .dot.full{ background:#ef4444; border-color:#ef4444; }
+    .dot.own-off{ background:#2563eb; border-color:#2563eb; }
+    .dot.own-late{ background:#67e8f9; border-color:#22d3ee; }
+    .dot.disabled{ background:#e5e7eb; border-color:#d1d5db; }
+
+    .dow{
+      display:grid;
+      grid-template-columns:repeat(7, minmax(0,1fr));
+      gap:6px;
+      margin-bottom:6px;
+    }
+
+    .dow div{
+      text-align:center;
+      font-size:11px;
+      font-weight:800;
+      color:var(--muted);
+      padding:6px 0;
+    }
+
+    .calendar{
+      display:grid;
+      grid-template-columns:repeat(7, minmax(0,1fr));
+      gap:6px;
+    }
+
+    .day-empty{
+      min-height:58px;
+    }
+
+    .day{
+      appearance:none;
+      width:100%;
+      min-height:64px;
+      padding:8px 6px 6px;
+      border-radius:16px;
+      border:1.5px solid var(--line);
+      background:#fff;
+      color:var(--text);
+      text-align:left;
+      cursor:pointer;
+      position:relative;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      gap:4px;
+      box-shadow:none;
+    }
+
+    .day .num{
+      font-size:15px;
+      font-weight:900;
+      line-height:1;
+    }
+
+    .day .mini{
+      font-size:10px;
+      font-weight:800;
+      line-height:1.15;
+      opacity:.95;
+      word-break:break-all;
+      white-space:pre-wrap;
+    }
+
+    .day .flag{
+      position:absolute;
+      top:6px;
+      right:6px;
+      width:8px;
+      height:8px;
+      border-radius:999px;
+      background:rgba(0,0,0,.08);
+    }
+
+    .day.today{
+      outline:2px solid #93c5fd;
+      outline-offset:1px;
+    }
+
+    .day.selected{
+      transform:translateY(-1px);
+      box-shadow:0 8px 18px rgba(37,99,235,.16);
+    }
+
+    .day.available{
+      background:#fff;
+      border-color:#86efac;
+    }
+    .day.available .flag{
+      background:#16a34a;
+    }
+
+    .day.full{
+      background:#fef2f2;
+      border-color:#ef4444;
+      color:#991b1b;
+    }
+    .day.full .flag{
+      background:#ef4444;
+    }
+
+    .day.own-off{
+      background:#2563eb;
+      border-color:#2563eb;
+      color:#fff;
+    }
+    .day.own-off .flag{
+      background:#dbeafe;
+    }
+
+    .day.own-late{
+      background:#67e8f9;
+      border-color:#22d3ee;
+      color:#083344;
+    }
+    .day.own-late .flag{
+      background:#0e7490;
+    }
+
+    .day.disabled{
+      background:#f3f4f6;
+      border-color:#e5e7eb;
+      color:#9ca3af;
+    }
+    .day.disabled .flag{
+      background:#d1d5db;
+    }
+
+    .statusbox{
+      white-space:pre-wrap;
       line-height:1.7;
+      font-size:13px;
+      color:var(--text);
+      min-height:120px;
+    }
+
+    .helpbox{
+      line-height:1.85;
+      font-size:13px;
+    }
+
+    .helpbox h3{
+      margin:0 0 8px;
+      font-size:16px;
+    }
+
+    .helpbox .muted{
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    .notice{
+      border-radius:14px;
+      padding:10px 12px;
+      font-size:12px;
+      font-weight:700;
+      line-height:1.6;
+    }
+
+    .notice.info{
+      background:#eff6ff;
+      color:#1d4ed8;
+      border:1px solid #bfdbfe;
+    }
+
+    .notice.warn{
+      background:#fff7ed;
+      color:#c2410c;
+      border:1px solid #fed7aa;
+    }
+
+    .hidden{ display:none !important; }
+
+    .overlay{
+      position:fixed;
+      inset:0;
+      background:rgba(17,24,39,.42);
+      opacity:0;
+      pointer-events:none;
+      transition:.18s ease;
+      z-index:30;
+    }
+
+    .overlay.show{
+      opacity:1;
+      pointer-events:auto;
+    }
+
+    .sheet{
+      position:fixed;
+      left:0;
+      right:0;
+      bottom:0;
+      z-index:31;
+      background:#fff;
+      border-top-left-radius:24px;
+      border-top-right-radius:24px;
+      box-shadow:0 -14px 40px rgba(17,24,39,.18);
+      transform:translateY(104%);
+      transition:.22s ease;
+      padding:
+        10px 14px
+        calc(env(safe-area-inset-bottom, 0px) + 18px);
+      max-width:760px;
+      margin:0 auto;
+    }
+
+    .sheet.show{
+      transform:translateY(0);
+    }
+
+    .sheet-handle{
+      width:44px;
+      height:5px;
+      border-radius:999px;
+      background:#d1d5db;
+      margin:0 auto 12px;
+    }
+
+    .sheet-head{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:12px;
+    }
+
+    .sheet-title{
+      font-size:18px;
+      font-weight:900;
+      line-height:1.2;
+    }
+
+    .sheet-sub{
+      margin-top:5px;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.5;
+      white-space:pre-wrap;
+    }
+
+    .sheet-actions{
+      display:grid;
+      gap:10px;
+      margin-top:12px;
+    }
+
+    .sheet-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+
+    .close-mini{
+      appearance:none;
+      border:none;
+      background:#f3f4f6;
+      color:#4b5563;
+      width:38px;
+      height:38px;
+      border-radius:999px;
+      font-size:18px;
+      font-weight:900;
+      cursor:pointer;
+      flex:0 0 auto;
+    }
+
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:calc(env(safe-area-inset-bottom, 0px) + 18px);
+      transform:translateX(-50%) translateY(16px);
+      background:#111827;
+      color:#fff;
+      padding:12px 14px;
+      border-radius:14px;
+      font-size:13px;
+      font-weight:700;
+      box-shadow:0 10px 26px rgba(17,24,39,.25);
+      opacity:0;
+      pointer-events:none;
+      transition:.18s ease;
+      z-index:50;
+      max-width:min(92vw, 520px);
+      text-align:center;
+      white-space:pre-wrap;
+    }
+
+    .toast.show{
+      opacity:1;
+      transform:translateX(-50%) translateY(0);
+    }
+
+    .loading{
+      position:fixed;
+      inset:0;
+      background:rgba(255,255,255,.62);
+      backdrop-filter:blur(2px);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:60;
+      opacity:0;
+      pointer-events:none;
+      transition:.18s ease;
+    }
+
+    .loading.show{
+      opacity:1;
+      pointer-events:auto;
+    }
+
+    .spinner{
+      width:46px;
+      height:46px;
+      border-radius:999px;
+      border:4px solid #dbeafe;
+      border-top-color:#2563eb;
+      animation:spin .85s linear infinite;
+    }
+
+    @keyframes spin{
+      to{ transform:rotate(360deg); }
+    }
+
+    @media (max-width: 520px){
+      .chips{
+        grid-template-columns:1fr 1fr;
+      }
+      .toolbar{
+        grid-template-columns:1fr 1fr;
+      }
+      .day{
+        min-height:58px;
+        padding:8px 5px 6px;
+      }
+      .day .num{
+        font-size:14px;
+      }
+      .day .mini{
+        font-size:9px;
+      }
+      .sheet-grid{
+        grid-template-columns:1fr;
+      }
     }
   </style>
 </head>
+
 <body>
-  <div class="card">
-    <h1>LIFF診断ページ（GitHub Pages）</h1>
-    <div class="small">
-      これは動作確認専用です。<br>
-      何が表示されたかをそのまま送ってください。
+  <div class="app">
+    <div class="topbar">
+      <div class="titlebox">
+        <h1 class="title">勤怠申請</h1>
+        <div class="subtitle" id="subtitle">LIFF初期化中…</div>
+      </div>
+      <button class="iconbtn" id="btnClose" type="button">閉じる</button>
+    </div>
+
+    <div class="stack">
+      <section class="card summary">
+        <div class="summary-top">
+          <div>
+            <div class="name" id="memberName">-</div>
+            <div class="role" id="memberRole">-</div>
+          </div>
+          <button class="btn soft" id="btnRefresh" type="button">更新</button>
+        </div>
+
+        <div class="chips">
+          <div class="chip">
+            <div class="chip-label">今月使用</div>
+            <div class="chip-value" id="usedValue">-</div>
+          </div>
+          <div class="chip">
+            <div class="chip-label">上限</div>
+            <div class="chip-value" id="capValue">-</div>
+          </div>
+          <div class="chip">
+            <div class="chip-label">残ポイント</div>
+            <div class="chip-value" id="remainValue">-</div>
+          </div>
+        </div>
+
+        <div class="toolbar">
+          <button class="btn primary" id="btnMonthCurrent" type="button">今月</button>
+          <button class="btn" id="btnMonthNext" type="button">来月</button>
+          <button class="btn" id="btnStatusReload" type="button">申請状況</button>
+          <button class="btn" id="btnHelpOpen" type="button">使い方</button>
+        </div>
+
+        <div class="seg">
+          <button class="segbtn active" id="tabCalendar" type="button">カレンダー</button>
+          <button class="segbtn" id="tabStatus" type="button">状況</button>
+          <button class="segbtn" id="tabHelp" type="button">使い方</button>
+        </div>
+      </section>
+
+      <section class="view active" id="viewCalendar">
+        <div class="card">
+          <div class="monthbar">
+            <button class="navbtn" id="btnPrevMonth" type="button">‹</button>
+            <div class="monthcenter">
+              <div class="monthlabel" id="monthLabel">-</div>
+              <div class="monthsub" id="monthSub">当月から3か月先まで操作できます</div>
+            </div>
+            <button class="navbtn" id="btnNextMonth" type="button">›</button>
+          </div>
+
+          <div class="legend">
+            <div class="legend-item"><span class="dot available"></span>空きあり</div>
+            <div class="legend-item"><span class="dot full"></span>満枠</div>
+            <div class="legend-item"><span class="dot own-off"></span>公休申請済み</div>
+            <div class="legend-item"><span class="dot own-late"></span>遅公申請済み</div>
+            <div class="legend-item"><span class="dot disabled"></span>申請不可/範囲外</div>
+          </div>
+
+          <div class="dow">
+            <div>日</div>
+            <div>月</div>
+            <div>火</div>
+            <div>水</div>
+            <div>木</div>
+            <div>金</div>
+            <div>土</div>
+          </div>
+
+          <div class="calendar" id="calendarGrid"></div>
+        </div>
+
+        <div class="notice info" id="calendarNotice">
+          日付をタップすると、その日の申請・変更・取消ができます。
+        </div>
+      </section>
+
+      <section class="view" id="viewStatus">
+        <div class="card">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;">
+            <div style="font-size:16px; font-weight:800;">申請状況</div>
+            <button class="btn soft" id="btnStatusRefresh2" type="button">再読込</button>
+          </div>
+          <div class="statusbox" id="statusBox">読込中…</div>
+        </div>
+      </section>
+
+      <section class="view" id="viewHelp">
+        <div class="card helpbox">
+          <h3>使い方</h3>
+          <div>
+            1. カレンダーで日付をタップ<br>
+            2. 下から出るメニューで <b>公休</b> または <b>遅公</b> を選択<br>
+            3. 申請済みの日は <b>変更</b> または <b>取消</b> ができます
+          </div>
+          <br>
+          <div>
+            <b>色の見方</b><br>
+            ・白ベース：空きあり<br>
+            ・赤：満枠<br>
+            ・青：自分が公休申請済み<br>
+            ・水色：自分が遅公申請済み<br>
+            ・薄灰：申請不可 / 遅公のみ申請可 / 範囲外
+          </div>
+          <br>
+          <div>
+            <b>注意</b><br>
+            ・UIから操作できるのは <b>当月から3か月先まで</b> です<br>
+            ・それより先は従来どおり <b>LINEコマンド</b> で申請してください<br>
+            ・源氏名の登録/改名は LINEトークで行います
+          </div>
+          <br>
+          <div class="muted">
+            登録例：登録 天国太郎<br>
+            改名例：改名 新しい源氏名
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 
-  <div class="card">
-    <button class="primary" id="btnInit">初期化を再実行</button>
-    <button id="btnHello">API hello</button>
-    <button id="btnClose">閉じる</button>
-  </div>
+  <div class="overlay" id="sheetOverlay"></div>
 
-  <div class="card">
-    <pre id="log">開始前</pre>
-  </div>
+  <section class="sheet" id="actionSheet" aria-hidden="true">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head">
+      <div>
+        <div class="sheet-title" id="sheetDateLabel">-</div>
+        <div class="sheet-sub" id="sheetDesc">-</div>
+      </div>
+      <button class="close-mini" id="btnSheetClose" type="button">×</button>
+    </div>
+
+    <div class="sheet-actions">
+      <div class="sheet-grid">
+        <button class="btn primary" id="btnApplyOff" type="button">公休で申請</button>
+        <button class="btn soft" id="btnApplyLate" type="button">遅公で申請</button>
+      </div>
+      <div class="sheet-grid">
+        <button class="btn soft" id="btnChangeOff" type="button">公休へ変更</button>
+        <button class="btn soft" id="btnChangeLate" type="button">遅公へ変更</button>
+      </div>
+      <button class="btn danger" id="btnCancelRequest" type="button">この日の申請を取消</button>
+      <button class="btn" id="btnCloseSheet2" type="button">閉じる</button>
+    </div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+  <div class="loading" id="loading"><div class="spinner"></div></div>
 
   <script>
     const LIFF_ID = "2009200739-aFlG2Qqe";
     const ENDPOINT = "https://attendance-relay.heaven1059-gd.workers.dev";
+
     const $ = (id) => document.getElementById(id);
 
-    function log(msg) {
-      const now = new Date().toLocaleTimeString();
-      $("log").textContent += `\n[${now}] ${msg}`;
+    const state = {
+      profile: null,
+      currentView: "calendar",
+      currentYm: "",
+      baseYm: "",
+      maxYm: "",
+      selectedDay: null,
+      monthData: null,
+      summary: null,
+      statusText: "",
+      memberName: "",
+      memberRole: "",
+      roleLabel: "",
+      userId: ""
+    };
+
+    function showLoading(flag){
+      $("loading").classList.toggle("show", !!flag);
     }
 
-    function clearLog() {
-      $("log").textContent = "";
+    let toastTimer = null;
+    function showToast(text){
+      const el = $("toast");
+      el.textContent = text || "";
+      el.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
     }
 
-    function safeGetIdToken() {
-      try { return liff.getIDToken() || ""; } catch (e) { return ""; }
+    function pad2(n){
+      return String(n).padStart(2, "0");
     }
 
-    function safeGetAccessToken() {
-      try { return liff.getAccessToken() || ""; } catch (e) { return ""; }
+    function ymdLocal(d = new Date()){
+      return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
     }
 
-    function safeGetUserIdFromIdToken() {
-      try { return liff.getDecodedIDToken()?.sub || ""; } catch (e) { return ""; }
+    function ymLocal(d = new Date()){
+      return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
     }
 
-    async function withTimeout(promise, ms, label) {
-      let timer;
-      const timeout = new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error(label + " timeout")), ms);
-      });
-      try {
-        return await Promise.race([promise, timeout]);
-      } finally {
-        clearTimeout(timer);
-      }
+    function parseYm(ym){
+      const m = String(ym || "").match(/^(\d{4})-(\d{2})$/);
+      if (!m) return null;
+      return { y: Number(m[1]), m: Number(m[2]) };
     }
 
-    async function apiCall(action, payload = {}) {
+    function formatYmLabel(ym){
+      const p = parseYm(ym);
+      if (!p) return ym || "-";
+      return `${p.y}/${pad2(p.m)}`;
+    }
+
+    function shiftYm(ym, delta){
+      const p = parseYm(ym);
+      if (!p) return "";
+      const dt = new Date(p.y, p.m - 1 + delta, 1);
+      return `${dt.getFullYear()}-${pad2(dt.getMonth()+1)}`;
+    }
+
+    function compareYm(a, b){
+      return String(a).localeCompare(String(b));
+    }
+
+    function formatDateJa(ymd){
+      const m = String(ymd || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!m) return ymd || "-";
+      return `${m[1]}/${m[2]}/${m[3]}`;
+    }
+
+    function getQueryParam(name){
+      return new URLSearchParams(location.search).get(name);
+    }
+
+    function safeGetIdToken(){
+      try { return liff.getIDToken() || ""; } catch(e){ return ""; }
+    }
+
+    function safeGetAccessToken(){
+      try { return liff.getAccessToken() || ""; } catch(e){ return ""; }
+    }
+
+    function safeGetUserIdFromIdToken(){
+      try { return liff.getDecodedIDToken()?.sub || ""; } catch(e){ return ""; }
+    }
+
+    async function apiCall(action, payload = {}){
       const idToken = safeGetIdToken();
       const accessToken = safeGetAccessToken();
       const userId = safeGetUserIdFromIdToken();
@@ -124,84 +909,485 @@
         ...payload
       };
 
-      log(`API送信: action=${action}`);
-
-      const resp = await withTimeout(fetch(ENDPOINT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      }), 12000, `fetch ${action}`);
-
-      const text = await withTimeout(resp.text(), 12000, `resp.text ${action}`);
-      log(`API応答(raw): ${text}`);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15000);
 
       try {
-        return JSON.parse(text);
+        const resp = await fetch(ENDPOINT, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
+
+        const text = await resp.text();
+
+        try {
+          return JSON.parse(text);
+        } catch (e) {
+          return {
+            ok: false,
+            message: `API応答エラー\n${text}`
+          };
+        }
       } catch (e) {
-        return { ok:false, message:"JSON parse error", raw:text };
+        if (e.name === "AbortError") {
+          return { ok:false, message:`APIタイムアウト\naction=${action}` };
+        }
+        return { ok:false, message:`通信エラー\naction=${action}\n${e.message || e}` };
+      } finally {
+        clearTimeout(timer);
       }
     }
 
-    async function runInit() {
-      clearLog();
-      log("診断開始");
-      log("LIFF_ID = " + LIFF_ID);
-      log("ENDPOINT = " + ENDPOINT);
+    function setView(view){
+      state.currentView = view;
+      ["calendar", "status", "help"].forEach(v => {
+        $("view" + capitalize(v)).classList.toggle("active", v === view);
+        $("tab" + capitalize(v)).classList.toggle("active", v === view);
+      });
+    }
+
+    function capitalize(s){
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    function setMemberInfo(){
+      $("memberName").textContent = state.memberName || state.profile?.displayName || "未登録";
+      $("memberRole").textContent = state.roleLabel
+        ? `${state.roleLabel} / UI対応: 当月〜3か月先`
+        : "UI対応: 当月〜3か月先";
+    }
+
+    function renderSummary(){
+      const used = Number(state.summary?.used ?? 0);
+      const cap = Number(state.summary?.cap ?? 0);
+      const remain = Number(state.summary?.remain ?? Math.max(0, cap - used));
+
+      $("usedValue").textContent = `${used}P`;
+      $("capValue").textContent = cap ? `${cap}P` : "-";
+      $("remainValue").textContent = cap ? `${remain}P` : "-";
+    }
+
+    function normalizeSummary(raw){
+      if (!raw) return { used:0, cap:0, remain:0 };
+
+      const used = Number(raw.used ?? raw.monthUsed ?? raw.pointsUsed ?? 0);
+      const cap = Number(raw.cap ?? raw.monthCap ?? raw.limit ?? 0);
+      const remain = Number(raw.remain ?? raw.remaining ?? Math.max(0, cap - used));
+
+      return { used, cap, remain };
+    }
+
+    function normalizeMonthData(raw){
+      const src = raw?.monthData || raw || {};
+      const ym = String(src.ym || src.month || state.currentYm || "");
+      const days = Array.isArray(src.days) ? src.days : [];
+
+      return {
+        ym,
+        days,
+        canPrev: !!src.canPrev,
+        canNext: !!src.canNext,
+        note: src.note || "",
+        rangeInfo: src.rangeInfo || ""
+      };
+    }
+
+    function getCellClass(day){
+      switch (String(day.state || "")) {
+        case "full": return "full";
+        case "own_off": return "own-off";
+        case "own_late": return "own-late";
+        case "disabled": return "disabled";
+        case "available":
+        default: return "available";
+      }
+    }
+
+    function getCellMini(day){
+      if (day.ownKind === "公休") return "公休";
+      if (day.ownKind === "遅公") return "遅公";
+      if (day.state === "full") return "満枠";
+      if (day.state === "disabled") {
+        return day.badge || "";
+      }
+      return day.badge || "";
+    }
+
+    function renderCalendar(){
+      const wrap = $("calendarGrid");
+      wrap.innerHTML = "";
+
+      const data = state.monthData;
+      if (!data || !data.ym) {
+        wrap.innerHTML = `<div class="notice warn" style="grid-column:1/-1;">カレンダーデータを表示できません。</div>`;
+        return;
+      }
+
+      $("monthLabel").textContent = formatYmLabel(data.ym);
+      $("monthSub").textContent = data.rangeInfo || "当月から3か月先まで操作できます";
+
+      const ym = parseYm(data.ym);
+      if (!ym) return;
+
+      const firstDow = new Date(ym.y, ym.m - 1, 1).getDay();
+      const lastDay = new Date(ym.y, ym.m, 0).getDate();
+      const map = new Map();
+
+      data.days.forEach(d => {
+        if (d?.date) map.set(String(d.date), d);
+      });
+
+      for (let i = 0; i < firstDow; i++) {
+        const empty = document.createElement("div");
+        empty.className = "day-empty";
+        wrap.appendChild(empty);
+      }
+
+      for (let dayNum = 1; dayNum <= lastDay; dayNum++) {
+        const date = `${data.ym}-${pad2(dayNum)}`;
+        const day = map.get(date) || {
+          date,
+          day: dayNum,
+          state: "disabled",
+          badge: "",
+          ownKind: "",
+          disabledReason: "読込データなし",
+          actions: {
+            canApplyOff: false,
+            canApplyLate: false,
+            canChangeToOff: false,
+            canChangeToLate: false,
+            canCancel: false
+          }
+        };
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `day ${getCellClass(day)}${day.isToday ? " today" : ""}${state.selectedDay?.date === date ? " selected" : ""}`;
+        btn.dataset.date = date;
+
+        btn.innerHTML = `
+          <span class="flag"></span>
+          <div class="num">${day.day || dayNum}</div>
+          <div class="mini">${getCellMini(day)}</div>
+        `;
+
+        btn.addEventListener("click", () => {
+          state.selectedDay = day;
+          openActionSheet(day);
+          renderCalendar();
+        });
+
+        wrap.appendChild(btn);
+      }
+
+      const totalCells = firstDow + lastDay;
+      const remain = totalCells % 7 === 0 ? 0 : (7 - (totalCells % 7));
+      for (let i = 0; i < remain; i++) {
+        const empty = document.createElement("div");
+        empty.className = "day-empty";
+        wrap.appendChild(empty);
+      }
+
+      $("btnPrevMonth").disabled = !canMoveMonth(-1);
+      $("btnNextMonth").disabled = !canMoveMonth(1);
+
+      if (data.note) {
+        $("calendarNotice").textContent = data.note;
+      } else {
+        $("calendarNotice").textContent = "日付をタップすると、その日の申請・変更・取消ができます。";
+      }
+    }
+
+    function canMoveMonth(delta){
+      const nextYm = shiftYm(state.currentYm, delta);
+      if (!nextYm) return false;
+      if (compareYm(nextYm, state.baseYm) < 0) return false;
+      if (compareYm(nextYm, state.maxYm) > 0) return false;
+      return true;
+    }
+
+    async function loadMonth(ym){
+      try {
+        showLoading(true);
+
+        const res = await apiCall("calendarMonth", { ym });
+        if (!res.ok) {
+          throw new Error(res.message || "月データ取得に失敗しました。");
+        }
+
+        state.currentYm = String(res.ym || res.monthData?.ym || ym || state.currentYm);
+        state.monthData = normalizeMonthData(res);
+        state.summary = normalizeSummary(res.summary || res.monthSummary || state.summary);
+        renderSummary();
+        renderCalendar();
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    async function loadStatus(){
+      try {
+        $("statusBox").textContent = "読込中…";
+        const res = await apiCall("status", {});
+        if (!res.ok) throw new Error(res.message || "状況取得に失敗しました。");
+        state.statusText = res.planText || res.message || "データなし";
+        $("statusBox").textContent = state.statusText;
+      } catch (e) {
+        $("statusBox").textContent = `読込失敗\n${e.message || e}`;
+      }
+    }
+
+    function openActionSheet(day){
+      const actions = day.actions || {};
+      const ownKind = String(day.ownKind || "");
+      const descLines = [];
+
+      if (ownKind) {
+        descLines.push(`現在の申請：${ownKind}`);
+      } else if (day.state === "full") {
+        descLines.push("現在：満枠");
+      } else if (day.state === "disabled") {
+        descLines.push("現在：申請制限あり");
+      } else {
+        descLines.push("現在：申請可能");
+      }
+
+      if (day.disabledReason) {
+        descLines.push(day.disabledReason);
+      }
+
+      $("sheetDateLabel").textContent = formatDateJa(day.date);
+      $("sheetDesc").textContent = descLines.join("\n");
+
+      $("btnApplyOff").disabled = !actions.canApplyOff;
+      $("btnApplyLate").disabled = !actions.canApplyLate;
+      $("btnChangeOff").disabled = !actions.canChangeToOff;
+      $("btnChangeLate").disabled = !actions.canChangeToLate;
+      $("btnCancelRequest").disabled = !actions.canCancel;
+
+      $("actionSheet").classList.add("show");
+      $("sheetOverlay").classList.add("show");
+      $("actionSheet").setAttribute("aria-hidden", "false");
+    }
+
+    function closeActionSheet(){
+      $("actionSheet").classList.remove("show");
+      $("sheetOverlay").classList.remove("show");
+      $("actionSheet").setAttribute("aria-hidden", "true");
+    }
+
+    async function postApply(kind){
+      if (!state.selectedDay?.date) return;
+      const res = await apiCall("apply", { kind, date: state.selectedDay.date, memo: "" });
+      if (!res.ok) throw new Error(res.message || "申請に失敗しました。");
+      showToast(`受付OK\n${kind} ${state.selectedDay.date}`);
+      await afterMutation(res);
+    }
+
+    async function postChange(kind){
+      if (!state.selectedDay?.date) return;
+      const res = await apiCall("change", { kind, date: state.selectedDay.date });
+      if (!res.ok) throw new Error(res.message || "変更に失敗しました。");
+      showToast(`変更OK\n${state.selectedDay.date}`);
+      await afterMutation(res);
+    }
+
+    async function postCancel(){
+      if (!state.selectedDay?.date) return;
+      const res = await apiCall("cancel", { date: state.selectedDay.date });
+      if (!res.ok) throw new Error(res.message || "取消に失敗しました。");
+      showToast(`取消OK\n${state.selectedDay.date}`);
+      await afterMutation(res);
+    }
+
+    async function afterMutation(res){
+      closeActionSheet();
+      if (res?.planText) {
+        state.statusText = res.planText;
+        $("statusBox").textContent = res.planText;
+      } else {
+        await loadStatus();
+      }
+      await loadMonth(state.currentYm);
+    }
+
+    async function guarded(fn){
+      try {
+        showLoading(true);
+        await fn();
+      } catch (e) {
+        showToast(e.message || String(e));
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    async function initialize(){
+      showLoading(true);
+      $("subtitle").textContent = "LIFF初期化中…";
 
       try {
-        log("1. liff.init 開始");
-        await withTimeout(liff.init({ liffId: LIFF_ID }), 15000, "liff.init");
-        log("1. liff.init 成功");
+        await liff.init({ liffId: LIFF_ID });
+        $("subtitle").textContent = "LINEログイン確認中…";
 
-        const loggedIn = liff.isLoggedIn();
-        log("2. liff.isLoggedIn = " + loggedIn);
-
-        if (!loggedIn) {
-          log("3. 未ログインなので login を実行します");
+        if (!liff.isLoggedIn()) {
           liff.login({ redirectUri: location.href });
           return;
         }
 
-        log("3. getProfile 開始");
-        const profile = await withTimeout(liff.getProfile(), 10000, "liff.getProfile");
-        log("3. getProfile 成功");
-        log("displayName = " + (profile?.displayName || ""));
-        log("profile.userId = " + (profile?.userId || ""));
+        try {
+          state.profile = await liff.getProfile();
+        } catch (e) {
+          state.profile = null;
+        }
 
-        const idToken = safeGetIdToken();
-        const decodedUserId = safeGetUserIdFromIdToken();
-        log("4. idToken length = " + (idToken ? idToken.length : 0));
-        log("decoded userId = " + (decodedUserId || "(none)"));
+        $("subtitle").textContent = "初期データ取得中…";
 
-        log("5. hello API 開始");
-        const hello = await apiCall("hello");
-        log("5. hello API 完了");
-        log("hello result = " + JSON.stringify(hello));
+        const initRes = await apiCall("calendarInit", {
+          ym: "",
+          view: getQueryParam("view") || "calendar",
+          offset: Number(getQueryParam("offset") || "0")
+        });
 
-        log("診断完了");
+        if (!initRes.ok) {
+          throw new Error(initRes.message || "初期化に失敗しました。");
+        }
+
+        state.memberName = initRes.name || state.profile?.displayName || "未登録";
+        state.userId = initRes.userId || state.profile?.userId || "";
+        state.memberRole = initRes.role || "";
+        state.roleLabel = initRes.roleLabel || "";
+        state.summary = normalizeSummary(initRes.summary || initRes.monthSummary);
+        state.monthData = normalizeMonthData(initRes);
+        state.currentYm = String(initRes.currentYm || initRes.monthData?.ym || ymLocal());
+        state.baseYm = String(initRes.baseYm || ymLocal());
+        state.maxYm = String(initRes.maxYm || shiftYm(state.baseYm, 3));
+
+        $("subtitle").textContent = state.userId
+          ? `LINE連携済み / ${state.userId}`
+          : "LINE連携済み";
+
+        setMemberInfo();
+        renderSummary();
+        renderCalendar();
+        await loadStatus();
+
+        const initialView = String(getQueryParam("view") || "calendar");
+        if (initialView === "status") {
+          setView("status");
+        } else if (initialView === "help") {
+          setView("help");
+        } else {
+          setView("calendar");
+        }
+
+        if (Number(getQueryParam("offset") || "0") === 1) {
+          const nextYm = shiftYm(state.baseYm, 1);
+          if (compareYm(nextYm, state.maxYm) <= 0) {
+            state.currentYm = nextYm;
+            await loadMonth(nextYm);
+          }
+        }
+
       } catch (e) {
-        log("ERROR = " + (e?.message || e));
+        $("subtitle").textContent = "初期化失敗";
+        $("calendarGrid").innerHTML = `<div class="notice warn" style="grid-column:1/-1;">${(e.message || e).replace(/\n/g, "<br>")}</div>`;
+        $("statusBox").textContent = e.message || String(e);
+        $("calendarNotice").textContent = "GAS側のUI APIが未反映、または通信エラーです。";
+      } finally {
+        showLoading(false);
       }
     }
 
-    $("btnInit").addEventListener("click", runInit);
-
-    $("btnHello").addEventListener("click", async () => {
-      try {
-        log("手動 hello 開始");
-        const res = await apiCall("hello");
-        log("手動 hello 結果 = " + JSON.stringify(res));
-      } catch (e) {
-        log("手動 hello ERROR = " + (e?.message || e));
-      }
-    });
-
     $("btnClose").addEventListener("click", () => {
       try { liff.closeWindow(); }
-      catch (e) { history.back(); }
+      catch(e){ history.back(); }
     });
 
-    runInit();
+    $("btnRefresh").addEventListener("click", () => guarded(async () => {
+      await loadMonth(state.currentYm);
+      await loadStatus();
+      showToast("更新しました");
+    }));
+
+    $("btnMonthCurrent").addEventListener("click", () => guarded(async () => {
+      state.currentYm = state.baseYm;
+      await loadMonth(state.currentYm);
+      setView("calendar");
+    }));
+
+    $("btnMonthNext").addEventListener("click", () => guarded(async () => {
+      const ym = shiftYm(state.baseYm, 1);
+      if (compareYm(ym, state.maxYm) > 0) {
+        showToast("来月表示が範囲外です");
+        return;
+      }
+      state.currentYm = ym;
+      await loadMonth(state.currentYm);
+      setView("calendar");
+    }));
+
+    $("btnPrevMonth").addEventListener("click", () => guarded(async () => {
+      if (!canMoveMonth(-1)) return;
+      state.currentYm = shiftYm(state.currentYm, -1);
+      await loadMonth(state.currentYm);
+    }));
+
+    $("btnNextMonth").addEventListener("click", () => guarded(async () => {
+      if (!canMoveMonth(1)) return;
+      state.currentYm = shiftYm(state.currentYm, 1);
+      await loadMonth(state.currentYm);
+    }));
+
+    $("btnStatusReload").addEventListener("click", () => guarded(async () => {
+      await loadStatus();
+      setView("status");
+      showToast("申請状況を更新しました");
+    }));
+
+    $("btnStatusRefresh2").addEventListener("click", () => guarded(async () => {
+      await loadStatus();
+      showToast("申請状況を更新しました");
+    }));
+
+    $("btnHelpOpen").addEventListener("click", () => setView("help"));
+
+    $("tabCalendar").addEventListener("click", () => setView("calendar"));
+    $("tabStatus").addEventListener("click", () => setView("status"));
+    $("tabHelp").addEventListener("click", () => setView("help"));
+
+    $("btnSheetClose").addEventListener("click", closeActionSheet);
+    $("btnCloseSheet2").addEventListener("click", closeActionSheet);
+    $("sheetOverlay").addEventListener("click", closeActionSheet);
+
+    $("btnApplyOff").addEventListener("click", () => guarded(async () => {
+      await postApply("公休");
+    }));
+
+    $("btnApplyLate").addEventListener("click", () => guarded(async () => {
+      await postApply("遅公");
+    }));
+
+    $("btnChangeOff").addEventListener("click", () => guarded(async () => {
+      await postChange("公休");
+    }));
+
+    $("btnChangeLate").addEventListener("click", () => guarded(async () => {
+      await postChange("遅公");
+    }));
+
+    $("btnCancelRequest").addEventListener("click", () => guarded(async () => {
+      await postCancel();
+    }));
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeActionSheet();
+    });
+
+    initialize();
   </script>
 </body>
 </html>
