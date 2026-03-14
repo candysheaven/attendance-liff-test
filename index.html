@@ -803,7 +803,7 @@
   <div class="toast" id="toast"></div>
   <div class="loading" id="loading"><div class="spinner"></div></div>
 
-  <script>
+<script>
   const LIFF_ID = "2009200739-aFlG2Qqe";
   const ENDPOINT = "https://attendance-relay.heaven1059-gd.workers.dev";
 
@@ -908,10 +908,24 @@
     try { return liff.getDecodedIDToken()?.sub || ""; } catch(e){ return ""; }
   }
 
+  function safeGetUserIdFromContext(){
+    try { return liff.getContext()?.userId || ""; } catch(e){ return ""; }
+  }
+
+  function getBestUserId(){
+    return (
+      state.userId ||
+      state.profile?.userId ||
+      safeGetUserIdFromContext() ||
+      safeGetUserIdFromIdToken() ||
+      ""
+    );
+  }
+
   async function apiCall(action, payload = {}){
     const idToken = safeGetIdToken();
     const accessToken = safeGetAccessToken();
-    const userId = safeGetUserIdFromIdToken();
+    const userId = getBestUserId();
 
     const body = {
       route: "api",
@@ -965,6 +979,67 @@
     return s.charAt(0).toUpperCase() + s.slice(1);
   }
 
+  function pickFirstNonEmpty(obj, keys){
+    for (const key of keys) {
+      const val = obj?.[key];
+      if (typeof val === "string" && val.trim()) return val.trim();
+    }
+    return "";
+  }
+
+  function mergeIdentityFromResponse(res){
+    if (!res || typeof res !== "object") return;
+
+    const apiName = pickFirstNonEmpty(res, [
+      "registeredName",
+      "memberName",
+      "name",
+      "genjiName",
+      "sourceName",
+      "staffName",
+      "userName"
+    ]);
+
+    const apiRole = pickFirstNonEmpty(res, [
+      "role",
+      "memberRole"
+    ]);
+
+    const apiRoleLabel = pickFirstNonEmpty(res, [
+      "roleLabel",
+      "memberRoleLabel"
+    ]);
+
+    const apiUserId = pickFirstNonEmpty(res, [
+      "userId",
+      "lineUserId"
+    ]);
+
+    state.memberName =
+      apiName ||
+      state.memberName ||
+      state.profile?.displayName ||
+      "未登録";
+
+    state.memberRole =
+      apiRole ||
+      state.memberRole ||
+      "";
+
+    state.roleLabel =
+      apiRoleLabel ||
+      state.roleLabel ||
+      "";
+
+    state.userId =
+      apiUserId ||
+      state.userId ||
+      state.profile?.userId ||
+      safeGetUserIdFromContext() ||
+      safeGetUserIdFromIdToken() ||
+      "";
+  }
+
   function setMemberInfo(){
     $("memberName").textContent = state.memberName || state.profile?.displayName || "未登録";
     $("memberRole").textContent = state.roleLabel
@@ -1007,30 +1082,48 @@
     };
   }
 
-  function mergeIdentityFromResponse(res){
-    if (!res || typeof res !== "object") return;
+  function parseSummaryFromPlanText(text, targetYm){
+    if (!text || !targetYm) return null;
 
-    state.memberName =
-      res.name ||
-      res.memberName ||
-      state.memberName ||
-      state.profile?.displayName ||
-      "未登録";
+    const p = parseYm(targetYm);
+    if (!p) return null;
 
-    state.userId =
-      res.userId ||
-      state.userId ||
-      "";
+    const ymSlash = `${p.y}/${pad2(p.m)}`;
+    const lines = String(text)
+      .split(/\r?\n/)
+      .map(s => s.trim())
+      .filter(Boolean);
 
-    state.memberRole =
-      res.role ||
-      state.memberRole ||
-      "";
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].includes(ymSlash) && /使用予定/.test(lines[i])) {
+        const next = lines[i + 1] || "";
+        const m = next.match(/(\d+)\s*P\s*\/\s*(\d+)\s*P.*?残\s*(\d+)\s*P/i);
+        if (m) {
+          return {
+            used: Number(m[1] || 0),
+            cap: Number(m[2] || 0),
+            remain: Number(m[3] || 0)
+          };
+        }
+      }
+    }
 
-    state.roleLabel =
-      res.roleLabel ||
-      state.roleLabel ||
-      "";
+    // フォールバック: 直後行でなくても最初に見つかった数値行を拾う
+    const text2 = String(text).replace(/\r/g, "");
+    const blockRegex = new RegExp(
+      `${ymSlash}\\s*使用予定[\\s\\S]{0,80}?(\\d+)\\s*P\\s*\\/\\s*(\\d+)\\s*P[\\s\\S]{0,20}?残\\s*(\\d+)\\s*P`,
+      "i"
+    );
+    const m2 = text2.match(blockRegex);
+    if (m2) {
+      return {
+        used: Number(m2[1] || 0),
+        cap: Number(m2[2] || 0),
+        remain: Number(m2[3] || 0)
+      };
+    }
+
+    return null;
   }
 
   function getCellClass(day){
@@ -1173,10 +1266,23 @@
   async function loadStatus(){
     try {
       $("statusBox").textContent = "読込中…";
+
       const res = await apiCall("status", {});
       if (!res.ok) throw new Error(res.message || "状況取得に失敗しました。");
+
+      mergeIdentityFromResponse(res);
+
       state.statusText = res.planText || res.message || "データなし";
       $("statusBox").textContent = state.statusText;
+
+      const parsedSummary = parseSummaryFromPlanText(state.statusText, state.baseYm || ymLocal());
+      if (parsedSummary) {
+        state.summary = parsedSummary;
+      }
+
+      setMemberInfo();
+      renderSummary();
+
     } catch (e) {
       $("statusBox").textContent = `読込失敗\n${e.message || e}`;
     }
@@ -1251,10 +1357,16 @@
     if (res?.planText) {
       state.statusText = res.planText;
       $("statusBox").textContent = res.planText;
+
+      const parsedSummary = parseSummaryFromPlanText(state.statusText, state.baseYm || ymLocal());
+      if (parsedSummary) {
+        state.summary = parsedSummary;
+      }
     } else {
       await loadStatus();
     }
 
+    renderSummary();
     await loadMonth(state.currentYm);
   }
 
@@ -1288,6 +1400,12 @@
         state.profile = null;
       }
 
+      state.userId =
+        state.profile?.userId ||
+        safeGetUserIdFromContext() ||
+        safeGetUserIdFromIdToken() ||
+        "";
+
       $("subtitle").textContent = "初期データ取得中…";
 
       const initRes = await apiCall("calendarInit", {
@@ -1302,7 +1420,7 @@
 
       mergeIdentityFromResponse(initRes);
 
-      state.summary = initRes.summary || initRes.monthSummary
+      state.summary = (initRes.summary || initRes.monthSummary)
         ? normalizeSummary(initRes.summary || initRes.monthSummary)
         : { used:0, cap:0, remain:0 };
 
@@ -1336,10 +1454,7 @@
 
       state.currentYm = firstYm;
 
-      // 初回表示は必ず表示対象月を1回だけ取得する
       await loadMonth(state.currentYm);
-
-      // 状況表示は別取得
       await loadStatus();
 
     } catch (e) {
@@ -1439,5 +1554,3 @@
 
   initialize();
 </script>
-</body>
-</html>
