@@ -826,7 +826,12 @@
     memberName: "",
     memberRole: "",
     roleLabel: "",
-    userId: ""
+    userId: "",
+    debug: {
+      liff: {},
+      requests: {},
+      responses: {}
+    }
   };
 
   function showLoading(flag){
@@ -922,6 +927,192 @@
     );
   }
 
+  function isPrimitiveStringLike(v){
+    return typeof v === "string" || typeof v === "number" || typeof v === "boolean";
+  }
+
+  function deepFindByKeys(obj, keys, mode = "string", depth = 4, seen = new WeakSet()){
+    if (!obj || typeof obj !== "object" || depth < 0) return undefined;
+    if (seen.has(obj)) return undefined;
+    seen.add(obj);
+
+    for (const key of keys) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        const val = obj[key];
+
+        if (mode === "string") {
+          if (isPrimitiveStringLike(val)) {
+            const s = String(val).trim();
+            if (s) return s;
+          }
+        } else if (mode === "number") {
+          if (typeof val === "number" && !Number.isNaN(val)) return val;
+          if (typeof val === "string" && val.trim() !== "") {
+            const n = Number(val);
+            if (!Number.isNaN(n)) return n;
+          }
+        }
+      }
+    }
+
+    for (const v of Object.values(obj)) {
+      if (v && typeof v === "object") {
+        const found = deepFindByKeys(v, keys, mode, depth - 1, seen);
+        if (found !== undefined) return found;
+      }
+    }
+
+    return undefined;
+  }
+
+  function topKeys(obj){
+    if (!obj || typeof obj !== "object") return "-";
+    try {
+      return Object.keys(obj).slice(0, 30).join(", ") || "-";
+    } catch(e) {
+      return "-";
+    }
+  }
+
+  function createDebugCard(){
+    if (document.getElementById("debugCard")) return;
+
+    const card = document.createElement("section");
+    card.id = "debugCard";
+    card.className = "card";
+    card.style.whiteSpace = "pre-wrap";
+    card.style.fontSize = "11px";
+    card.style.lineHeight = "1.55";
+    card.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+    card.style.color = "#374151";
+    card.style.border = "1px solid #f59e0b";
+    card.style.background = "#fffbeb";
+    card.style.padding = "12px";
+    card.style.wordBreak = "break-all";
+    card.textContent = "DEBUG 読込中…";
+
+    const stack = document.querySelector(".stack");
+    if (stack) {
+      stack.prepend(card);
+    }
+  }
+
+  function shortText(v, max = 120){
+    const s = String(v ?? "");
+    return s.length > max ? s.slice(0, max) + "…" : s;
+  }
+
+  function updateDebugCard(){
+    const el = document.getElementById("debugCard");
+    if (!el) return;
+
+    const liffInfo = state.debug.liff || {};
+    const req = state.debug.requests || {};
+    const res = state.debug.responses || {};
+
+    const initRes = res.calendarInit || {};
+    const monthRes = res.calendarMonth || {};
+    const statusRes = res.status || {};
+
+    const lines = [
+      "DEBUG",
+      "",
+      "[LIFF]",
+      `profile.displayName = ${liffInfo.profileDisplayName || "-"}`,
+      `profile.userId      = ${liffInfo.profileUserId || "-"}`,
+      `context.userId      = ${liffInfo.contextUserId || "-"}`,
+      `idToken.sub         = ${liffInfo.idTokenSub || "-"}`,
+      `hasIdToken          = ${liffInfo.hasIdToken ? "YES" : "NO"}`,
+      `hasAccessToken      = ${liffInfo.hasAccessToken ? "YES" : "NO"}`,
+      `state.userId        = ${state.userId || "-"}`,
+      "",
+      "[REQUEST USER ID]",
+      `calendarInit  = ${(req.calendarInit && req.calendarInit.userId) || "-"}`,
+      `calendarMonth = ${(req.calendarMonth && req.calendarMonth.userId) || "-"}`,
+      `status        = ${(req.status && req.status.userId) || "-"}`,
+      "",
+      "[calendarInit RESPONSE]",
+      `ok            = ${initRes.ok ?? "-"}`,
+      `topKeys       = ${initRes.topKeys || "-"}`,
+      `name          = ${initRes.name || "-"}`,
+      `memberName    = ${initRes.memberName || "-"}`,
+      `registered    = ${initRes.registeredName || "-"}`,
+      `userId        = ${initRes.userId || "-"}`,
+      `lineUserId    = ${initRes.lineUserId || "-"}`,
+      `summary       = used:${initRes.used ?? "-"} cap:${initRes.cap ?? "-"} remain:${initRes.remain ?? "-"}`,
+      "",
+      "[calendarMonth RESPONSE]",
+      `ok            = ${monthRes.ok ?? "-"}`,
+      `topKeys       = ${monthRes.topKeys || "-"}`,
+      `name          = ${monthRes.name || "-"}`,
+      `memberName    = ${monthRes.memberName || "-"}`,
+      `registered    = ${monthRes.registeredName || "-"}`,
+      `userId        = ${monthRes.userId || "-"}`,
+      `lineUserId    = ${monthRes.lineUserId || "-"}`,
+      `summary       = used:${monthRes.used ?? "-"} cap:${monthRes.cap ?? "-"} remain:${monthRes.remain ?? "-"}`,
+      "",
+      "[status RESPONSE]",
+      `ok            = ${statusRes.ok ?? "-"}`,
+      `topKeys       = ${statusRes.topKeys || "-"}`,
+      `name          = ${statusRes.name || "-"}`,
+      `memberName    = ${statusRes.memberName || "-"}`,
+      `registered    = ${statusRes.registeredName || "-"}`,
+      `userId        = ${statusRes.userId || "-"}`,
+      `lineUserId    = ${statusRes.lineUserId || "-"}`,
+      `planTextHead  = ${shortText(statusRes.planText || statusRes.message || "-", 160)}`,
+      "",
+      "[UI STATE]",
+      `memberName    = ${state.memberName || "-"}`,
+      `summary.used  = ${state.summary?.used ?? "-"}`,
+      `summary.cap   = ${state.summary?.cap ?? "-"}`,
+      `summary.rem   = ${state.summary?.remain ?? "-"}`
+    ];
+
+    el.textContent = lines.join("\n");
+  }
+
+  function rememberLiffDebug(){
+    state.debug.liff = {
+      profileDisplayName: state.profile?.displayName || "",
+      profileUserId: state.profile?.userId || "",
+      contextUserId: safeGetUserIdFromContext() || "",
+      idTokenSub: safeGetUserIdFromIdToken() || "",
+      hasIdToken: !!safeGetIdToken(),
+      hasAccessToken: !!safeGetAccessToken()
+    };
+    updateDebugCard();
+  }
+
+  function rememberRequestDebug(action, body){
+    state.debug.requests[action] = {
+      userId: body?.userId || "",
+      hasIdToken: !!body?.idToken,
+      hasAccessToken: !!body?.accessToken
+    };
+    updateDebugCard();
+  }
+
+  function rememberResponseDebug(action, res){
+    const used = deepFindByKeys(res, ["used", "monthUsed", "pointsUsed", "usedPoints"], "number");
+    const cap = deepFindByKeys(res, ["cap", "monthCap", "limit", "pointCap"], "number");
+    const remain = deepFindByKeys(res, ["remain", "remaining", "pointsRemain", "remainPoints"], "number");
+
+    state.debug.responses[action] = {
+      ok: res?.ok,
+      topKeys: topKeys(res),
+      name: deepFindByKeys(res, ["name"], "string") || "",
+      memberName: deepFindByKeys(res, ["memberName"], "string") || "",
+      registeredName: deepFindByKeys(res, ["registeredName", "genjiName", "sourceName", "staffName"], "string") || "",
+      userId: deepFindByKeys(res, ["userId"], "string") || "",
+      lineUserId: deepFindByKeys(res, ["lineUserId", "lineUid", "uid"], "string") || "",
+      planText: (typeof res?.planText === "string" ? res.planText : "") || (typeof res?.message === "string" ? res.message : ""),
+      used,
+      cap,
+      remain
+    };
+    updateDebugCard();
+  }
+
   async function apiCall(action, payload = {}){
     const idToken = safeGetIdToken();
     const accessToken = safeGetAccessToken();
@@ -932,9 +1123,12 @@
       action,
       userId: userId || "",
       idToken: idToken || "",
-      accessToken: idToken ? "" : (accessToken || ""),
+      accessToken: accessToken || "",
+      displayName: state.profile?.displayName || "",
       ...payload
     };
+
+    rememberRequestDebug(action, body);
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15000);
@@ -950,18 +1144,23 @@
       const text = await resp.text();
 
       try {
-        return JSON.parse(text);
+        const json = JSON.parse(text);
+        rememberResponseDebug(action, json);
+        return json;
       } catch (e) {
-        return {
+        const fail = {
           ok: false,
           message: `API応答エラー\n${text}`
         };
+        rememberResponseDebug(action, fail);
+        return fail;
       }
     } catch (e) {
-      if (e.name === "AbortError") {
-        return { ok:false, message:`APIタイムアウト\naction=${action}` };
-      }
-      return { ok:false, message:`通信エラー\naction=${action}\n${e.message || e}` };
+      const fail = e.name === "AbortError"
+        ? { ok:false, message:`APIタイムアウト\naction=${action}` }
+        : { ok:false, message:`通信エラー\naction=${action}\n${e.message || e}` };
+      rememberResponseDebug(action, fail);
+      return fail;
     } finally {
       clearTimeout(timer);
     }
@@ -979,41 +1178,36 @@
     return s.charAt(0).toUpperCase() + s.slice(1);
   }
 
-  function pickFirstNonEmpty(obj, keys){
-    for (const key of keys) {
-      const val = obj?.[key];
-      if (typeof val === "string" && val.trim()) return val.trim();
-    }
-    return "";
-  }
-
   function mergeIdentityFromResponse(res){
     if (!res || typeof res !== "object") return;
 
-    const apiName = pickFirstNonEmpty(res, [
+    const apiName = deepFindByKeys(res, [
       "registeredName",
       "memberName",
-      "name",
       "genjiName",
       "sourceName",
       "staffName",
-      "userName"
-    ]);
+      "userName",
+      "name"
+    ], "string");
 
-    const apiRole = pickFirstNonEmpty(res, [
+    const apiRole = deepFindByKeys(res, [
       "role",
       "memberRole"
-    ]);
+    ], "string");
 
-    const apiRoleLabel = pickFirstNonEmpty(res, [
+    const apiRoleLabel = deepFindByKeys(res, [
       "roleLabel",
       "memberRoleLabel"
-    ]);
+    ], "string");
 
-    const apiUserId = pickFirstNonEmpty(res, [
+    const apiUserId = deepFindByKeys(res, [
       "userId",
-      "lineUserId"
-    ]);
+      "lineUserId",
+      "lineUid",
+      "uid",
+      "sub"
+    ], "string");
 
     state.memberName =
       apiName ||
@@ -1058,13 +1252,27 @@
   }
 
   function normalizeSummary(raw){
-    if (!raw) return { used:0, cap:0, remain:0 };
+    if (!raw) return null;
 
-    const used = Number(raw.used ?? raw.monthUsed ?? raw.pointsUsed ?? 0);
-    const cap = Number(raw.cap ?? raw.monthCap ?? raw.limit ?? 0);
-    const remain = Number(raw.remain ?? raw.remaining ?? Math.max(0, cap - used));
+    const used = deepFindByKeys(raw, ["used", "monthUsed", "pointsUsed", "usedPoints"], "number");
+    const cap = deepFindByKeys(raw, ["cap", "monthCap", "limit", "pointCap"], "number");
+    const remain = deepFindByKeys(raw, ["remain", "remaining", "pointsRemain", "remainPoints"], "number");
 
-    return { used, cap, remain };
+    if (used === undefined && cap === undefined && remain === undefined) return null;
+
+    const safeUsed = Number(used ?? 0);
+    const safeCap = Number(cap ?? 0);
+    const safeRemain = Number(remain ?? Math.max(0, safeCap - safeUsed));
+
+    return {
+      used: safeUsed,
+      cap: safeCap,
+      remain: safeRemain
+    };
+  }
+
+  function extractSummaryFromResponse(raw){
+    return normalizeSummary(raw?.summary || raw?.monthSummary || raw);
   }
 
   function normalizeMonthData(raw){
@@ -1108,7 +1316,6 @@
       }
     }
 
-    // フォールバック: 直後行でなくても最初に見つかった数値行を拾う
     const text2 = String(text).replace(/\r/g, "");
     const blockRegex = new RegExp(
       `${ymSlash}\\s*使用予定[\\s\\S]{0,80}?(\\d+)\\s*P\\s*\\/\\s*(\\d+)\\s*P[\\s\\S]{0,20}?残\\s*(\\d+)\\s*P`,
@@ -1154,6 +1361,7 @@
       wrap.innerHTML = `<div class="notice warn" style="grid-column:1/-1;">カレンダーデータを表示できません。</div>`;
       $("monthLabel").textContent = "-";
       $("monthSub").textContent = UI_RANGE_TEXT;
+      updateDebugCard();
       return;
     }
 
@@ -1231,6 +1439,8 @@
     } else {
       $("calendarNotice").textContent = "日付をタップすると、その日の申請・変更・取消ができます。";
     }
+
+    updateDebugCard();
   }
 
   function canMoveMonth(delta){
@@ -1252,8 +1462,9 @@
     state.currentYm = String(res.ym || res.monthData?.ym || ym || state.currentYm);
     state.monthData = normalizeMonthData(res);
 
-    if (res.summary || res.monthSummary) {
-      state.summary = normalizeSummary(res.summary || res.monthSummary);
+    const extracted = extractSummaryFromResponse(res);
+    if (extracted) {
+      state.summary = extracted;
     } else if (!state.summary) {
       state.summary = { used:0, cap:0, remain:0 };
     }
@@ -1261,6 +1472,7 @@
     setMemberInfo();
     renderSummary();
     renderCalendar();
+    updateDebugCard();
   }
 
   async function loadStatus(){
@@ -1275,16 +1487,22 @@
       state.statusText = res.planText || res.message || "データなし";
       $("statusBox").textContent = state.statusText;
 
+      const extracted = extractSummaryFromResponse(res);
       const parsedSummary = parseSummaryFromPlanText(state.statusText, state.baseYm || ymLocal());
-      if (parsedSummary) {
+
+      if (extracted) {
+        state.summary = extracted;
+      } else if (parsedSummary) {
         state.summary = parsedSummary;
       }
 
       setMemberInfo();
       renderSummary();
+      updateDebugCard();
 
     } catch (e) {
       $("statusBox").textContent = `読込失敗\n${e.message || e}`;
+      updateDebugCard();
     }
   }
 
@@ -1358,8 +1576,12 @@
       state.statusText = res.planText;
       $("statusBox").textContent = res.planText;
 
+      const extracted = extractSummaryFromResponse(res);
       const parsedSummary = parseSummaryFromPlanText(state.statusText, state.baseYm || ymLocal());
-      if (parsedSummary) {
+
+      if (extracted) {
+        state.summary = extracted;
+      } else if (parsedSummary) {
         state.summary = parsedSummary;
       }
     } else {
@@ -1368,6 +1590,7 @@
 
     renderSummary();
     await loadMonth(state.currentYm);
+    updateDebugCard();
   }
 
   async function guarded(fn){
@@ -1386,6 +1609,8 @@
     $("subtitle").textContent = "LIFF初期化中…";
 
     try {
+      createDebugCard();
+
       await liff.init({ liffId: LIFF_ID });
       $("subtitle").textContent = "LINEログイン確認中…";
 
@@ -1406,7 +1631,13 @@
         safeGetUserIdFromIdToken() ||
         "";
 
-      $("subtitle").textContent = "初期データ取得中…";
+      rememberLiffDebug();
+
+      $("subtitle").textContent = state.userId
+        ? `LINE連携済み / ${state.userId}`
+        : "LINE連携済み";
+
+      $("subtitle").style.whiteSpace = "pre-wrap";
 
       const initRes = await apiCall("calendarInit", {
         ym: "",
@@ -1420,9 +1651,8 @@
 
       mergeIdentityFromResponse(initRes);
 
-      state.summary = (initRes.summary || initRes.monthSummary)
-        ? normalizeSummary(initRes.summary || initRes.monthSummary)
-        : { used:0, cap:0, remain:0 };
+      const extractedInitSummary = extractSummaryFromResponse(initRes);
+      state.summary = extractedInitSummary || { used:0, cap:0, remain:0 };
 
       state.baseYm = String(initRes.baseYm || ymLocal());
       state.currentYm = String(initRes.currentYm || initRes.monthData?.ym || state.baseYm || ymLocal());
@@ -1457,11 +1687,14 @@
       await loadMonth(state.currentYm);
       await loadStatus();
 
+      updateDebugCard();
+
     } catch (e) {
       $("subtitle").textContent = "初期化失敗";
       $("calendarGrid").innerHTML = `<div class="notice warn" style="grid-column:1/-1;">${(e.message || e).replace(/\n/g, "<br>")}</div>`;
       $("statusBox").textContent = e.message || String(e);
       $("calendarNotice").textContent = "GAS側のUI APIが未反映、または通信エラーです。";
+      updateDebugCard();
     } finally {
       showLoading(false);
     }
