@@ -978,6 +978,26 @@
     return monthData.days.find(d => String(d?.date || "") === String(date)) || null;
   }
 
+  function getLiveDayByDate(date){
+    const live = findDayInMonthData(state.monthData, date);
+    if (live) return normalizeDayObject(live, date);
+
+    return normalizeDayObject({
+      date,
+      state: "disabled",
+      badge: "",
+      ownKind: "",
+      disabledReason: "読込データなし",
+      actions: {
+        canApplyOff: false,
+        canApplyLate: false,
+        canChangeToOff: false,
+        canChangeToLate: false,
+        canCancel: false
+      }
+    }, date);
+  }
+
   function replaceDayInMonthData(monthData, newDay){
     if (!monthData?.days || !Array.isArray(monthData.days) || !newDay?.date) return;
 
@@ -1308,9 +1328,10 @@
       renderDayButton(btn, day);
 
       btn.addEventListener("click", () => {
-        state.selectedDay = day;
-        openActionSheet(day);
-        updateRenderedDay(day.date, day);
+        const liveDay = getLiveDayByDate(date);
+        state.selectedDay = liveDay;
+        openActionSheet(liveDay);
+        updateRenderedDay(date, liveDay);
       });
 
       wrap.appendChild(btn);
@@ -1455,7 +1476,7 @@
         }
       }
     } catch (e) {
-      // バックグラウンド同期なので握りつぶす
+      // バックグラウンド同期なので無視
     }
   }
 
@@ -1636,14 +1657,16 @@
     }
 
     if (ym && nextDay) {
-      state.selectedDay = nextDay;
       upsertDayInState(ym, nextDay);
+
+      const liveDay = getLiveDayByDate(date);
+      state.selectedDay = liveDay;
 
       if (state.monthCache[ym]?.summary) {
         state.monthCache[ym].summary = cloneData(state.summary);
       }
 
-      if (!updateRenderedDay(date, nextDay)) {
+      if (!updateRenderedDay(date, liveDay)) {
         renderCalendar();
       }
     } else {
@@ -1651,7 +1674,6 @@
       return;
     }
 
-    // 画面は即時更新、サーバー整合は裏で該当日だけ同期
     if (ym && date) {
       syncSingleDayFromServer(ym, date);
     }
