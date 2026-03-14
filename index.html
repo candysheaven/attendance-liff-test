@@ -730,13 +730,13 @@
           <div>
             <b>注意</b><br>
             ・UIから操作できるのは <b>当月から2か月先まで</b> です<br>
-            ・それより先は従来どおり <b>LINEトーク</b> で申請してください<br>
+            ・それより先は従来どおり <b>LINEコマンド</b> で申請してください<br>
             ・源氏名の登録/改名は LINEトークで行います
           </div>
           <br>
           <div class="muted">
             登録例：登録 天国太郎<br>
-            改名例：改名 天使二郎
+            改名例：改名 新しい源氏名
           </div>
         </div>
       </section>
@@ -796,7 +796,8 @@
       memberName: "",
       memberRole: "",
       roleLabel: "",
-      userId: ""
+      userId: "",
+      monthCache: {}
     };
 
     function showLoading(flag){
@@ -924,6 +925,33 @@
       }
 
       return undefined;
+    }
+
+    function cloneData(obj){
+      return JSON.parse(JSON.stringify(obj));
+    }
+
+    function getCachedMonth(ym){
+      const cached = state.monthCache[ym];
+      if (!cached) return null;
+      return cloneData(cached);
+    }
+
+    function setCachedMonth(ym, monthData, summary){
+      if (!ym || !monthData) return;
+      state.monthCache[ym] = cloneData({
+        monthData,
+        summary: summary || null
+      });
+    }
+
+    function clearCachedMonth(ym){
+      if (!ym) return;
+      delete state.monthCache[ym];
+    }
+
+    function clearAllMonthCache(){
+      state.monthCache = {};
     }
 
     async function apiCall(action, payload = {}){
@@ -1229,7 +1257,7 @@
 
       const totalCells = firstDow + lastDay;
       const remain = totalCells % 7 === 0 ? 0 : (7 - (totalCells % 7));
-      for (let i = 0; i <remain; i++) {
+      for (let i = 0; i < remain; i++) {
         const empty = document.createElement("div");
         empty.className = "day-empty";
         wrap.appendChild(empty);
@@ -1253,7 +1281,24 @@
       return true;
     }
 
-    async function loadMonth(ym){
+    async function loadMonth(ym, options = {}){
+      const force = !!options.force;
+
+      if (!force) {
+        const cached = getCachedMonth(ym);
+        if (cached?.monthData) {
+          state.currentYm = ym;
+          state.monthData = cached.monthData;
+          if (cached.summary) {
+            state.summary = cached.summary;
+          }
+          setMemberInfo();
+          renderSummary();
+          renderCalendar();
+          return;
+        }
+      }
+
       const res = await apiCall("calendarMonth", { ym });
       if (!res.ok) {
         throw new Error(res.message || "月データ取得に失敗しました。");
@@ -1270,6 +1315,8 @@
       } else if (!state.summary) {
         state.summary = { used:0, cap:0, remain:0 };
       }
+
+      setCachedMonth(state.currentYm, state.monthData, state.summary);
 
       setMemberInfo();
       renderSummary();
@@ -1296,6 +1343,11 @@
           state.summary = extracted;
         } else if (parsedSummary) {
           state.summary = parsedSummary;
+        }
+
+        // 現在表示中の月キャッシュにも最新summaryを反映
+        if (state.currentYm && state.monthCache[state.currentYm]) {
+          state.monthCache[state.currentYm].summary = cloneData(state.summary);
         }
 
         setMemberInfo();
@@ -1378,6 +1430,9 @@
     async function afterMutation(res){
       closeActionSheet();
 
+      // 変更が入った月のキャッシュは必ず捨てる
+      clearCachedMonth(state.currentYm);
+
       if (res?.planText) {
         state.statusText = res.planText;
         state.statusLoaded = true;
@@ -1396,7 +1451,7 @@
       }
 
       renderSummary();
-      await loadMonth(state.currentYm);
+      await loadMonth(state.currentYm, { force: true });
     }
 
     async function guarded(fn){
@@ -1485,6 +1540,7 @@
 
         if (hasInitMonthData && firstYm === initMonthYm) {
           state.monthData = normalizeMonthData(initRes);
+          setCachedMonth(firstYm, state.monthData, state.summary);
           renderCalendar();
         } else {
           await loadMonth(firstYm);
@@ -1512,7 +1568,8 @@
     });
 
     $("btnRefresh").addEventListener("click", () => guarded(async () => {
-      await loadMonth(state.currentYm);
+      clearAllMonthCache();
+      await loadMonth(state.currentYm, { force: true });
       if (state.statusLoaded) {
         await loadStatus();
       }
