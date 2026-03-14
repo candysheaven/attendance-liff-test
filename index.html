@@ -804,603 +804,640 @@
   <div class="loading" id="loading"><div class="spinner"></div></div>
 
   <script>
-    const LIFF_ID = "2009200739-aFlG2Qqe";
-    const ENDPOINT = "https://attendance-relay.heaven1059-gd.workers.dev";
+  const LIFF_ID = "2009200739-aFlG2Qqe";
+  const ENDPOINT = "https://attendance-relay.heaven1059-gd.workers.dev";
 
-    const UI_MAX_MONTH_OFFSET = 2; // 当月から2か月先まで
-    const UI_RANGE_TEXT = `当月から${UI_MAX_MONTH_OFFSET}か月先まで操作できます`;
-    const UI_ROLE_RANGE_TEXT = `UI対応: 当月〜${UI_MAX_MONTH_OFFSET}か月先`;
+  const UI_MAX_MONTH_OFFSET = 2; // 当月から2か月先まで
+  const UI_RANGE_TEXT = `当月から${UI_MAX_MONTH_OFFSET}か月先まで操作できます`;
+  const UI_ROLE_RANGE_TEXT = `UI対応: 当月〜${UI_MAX_MONTH_OFFSET}か月先`;
 
-    const $ = (id) => document.getElementById(id);
+  const $ = (id) => document.getElementById(id);
 
-    const state = {
-      profile: null,
-      currentView: "calendar",
-      currentYm: "",
-      baseYm: "",
-      maxYm: "",
-      selectedDay: null,
-      monthData: null,
-      summary: null,
-      statusText: "",
-      memberName: "",
-      memberRole: "",
-      roleLabel: "",
-      userId: ""
+  const state = {
+    profile: null,
+    currentView: "calendar",
+    currentYm: "",
+    baseYm: "",
+    maxYm: "",
+    selectedDay: null,
+    monthData: null,
+    summary: null,
+    statusText: "",
+    memberName: "",
+    memberRole: "",
+    roleLabel: "",
+    userId: ""
+  };
+
+  function showLoading(flag){
+    $("loading").classList.toggle("show", !!flag);
+  }
+
+  let toastTimer = null;
+  function showToast(text){
+    const el = $("toast");
+    el.textContent = text || "";
+    el.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
+  }
+
+  function pad2(n){
+    return String(n).padStart(2, "0");
+  }
+
+  function ymdLocal(d = new Date()){
+    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+  }
+
+  function ymLocal(d = new Date()){
+    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
+  }
+
+  function parseYm(ym){
+    const m = String(ym || "").match(/^(\d{4})-(\d{2})$/);
+    if (!m) return null;
+    return { y: Number(m[1]), m: Number(m[2]) };
+  }
+
+  function formatYmLabel(ym){
+    const p = parseYm(ym);
+    if (!p) return ym || "-";
+    return `${p.y}/${pad2(p.m)}`;
+  }
+
+  function shiftYm(ym, delta){
+    const p = parseYm(ym);
+    if (!p) return "";
+    const dt = new Date(p.y, p.m - 1 + delta, 1);
+    return `${dt.getFullYear()}-${pad2(dt.getMonth()+1)}`;
+  }
+
+  function compareYm(a, b){
+    return String(a).localeCompare(String(b));
+  }
+
+  function formatDateJa(ymd){
+    const m = String(ymd || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return ymd || "-";
+    return `${m[1]}/${m[2]}/${m[3]}`;
+  }
+
+  function normalizeRangeText(text){
+    if (!text) return UI_RANGE_TEXT;
+    return String(text)
+      .replace(/3か月先/g, "2か月先")
+      .replace(/3ヶ月先/g, "2ヶ月先")
+      .replace(/3か月/g, "2か月")
+      .replace(/3ヶ月/g, "2ヶ月");
+  }
+
+  function getQueryParam(name){
+    return new URLSearchParams(location.search).get(name);
+  }
+
+  function safeGetIdToken(){
+    try { return liff.getIDToken() || ""; } catch(e){ return ""; }
+  }
+
+  function safeGetAccessToken(){
+    try { return liff.getAccessToken() || ""; } catch(e){ return ""; }
+  }
+
+  function safeGetUserIdFromIdToken(){
+    try { return liff.getDecodedIDToken()?.sub || ""; } catch(e){ return ""; }
+  }
+
+  async function apiCall(action, payload = {}){
+    const idToken = safeGetIdToken();
+    const accessToken = safeGetAccessToken();
+    const userId = safeGetUserIdFromIdToken();
+
+    const body = {
+      route: "api",
+      action,
+      userId: userId || "",
+      idToken: idToken || "",
+      accessToken: idToken ? "" : (accessToken || ""),
+      ...payload
     };
 
-    function showLoading(flag){
-      $("loading").classList.toggle("show", !!flag);
-    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
 
-    let toastTimer = null;
-    function showToast(text){
-      const el = $("toast");
-      el.textContent = text || "";
-      el.classList.add("show");
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
-    }
+    try {
+      const resp = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      });
 
-    function pad2(n){
-      return String(n).padStart(2, "0");
-    }
-
-    function ymdLocal(d = new Date()){
-      return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-    }
-
-    function ymLocal(d = new Date()){
-      return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
-    }
-
-    function parseYm(ym){
-      const m = String(ym || "").match(/^(\d{4})-(\d{2})$/);
-      if (!m) return null;
-      return { y: Number(m[1]), m: Number(m[2]) };
-    }
-
-    function formatYmLabel(ym){
-      const p = parseYm(ym);
-      if (!p) return ym || "-";
-      return `${p.y}/${pad2(p.m)}`;
-    }
-
-    function shiftYm(ym, delta){
-      const p = parseYm(ym);
-      if (!p) return "";
-      const dt = new Date(p.y, p.m - 1 + delta, 1);
-      return `${dt.getFullYear()}-${pad2(dt.getMonth()+1)}`;
-    }
-
-    function compareYm(a, b){
-      return String(a).localeCompare(String(b));
-    }
-
-    function formatDateJa(ymd){
-      const m = String(ymd || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (!m) return ymd || "-";
-      return `${m[1]}/${m[2]}/${m[3]}`;
-    }
-
-    function normalizeRangeText(text){
-      if (!text) return UI_RANGE_TEXT;
-      return String(text)
-        .replace(/3か月先/g, "2か月先")
-        .replace(/3ヶ月先/g, "2ヶ月先")
-        .replace(/3か月/g, "2か月")
-        .replace(/3ヶ月/g, "2ヶ月");
-    }
-
-    function getQueryParam(name){
-      return new URLSearchParams(location.search).get(name);
-    }
-
-    function safeGetIdToken(){
-      try { return liff.getIDToken() || ""; } catch(e){ return ""; }
-    }
-
-    function safeGetAccessToken(){
-      try { return liff.getAccessToken() || ""; } catch(e){ return ""; }
-    }
-
-    function safeGetUserIdFromIdToken(){
-      try { return liff.getDecodedIDToken()?.sub || ""; } catch(e){ return ""; }
-    }
-
-    async function apiCall(action, payload = {}){
-      const idToken = safeGetIdToken();
-      const accessToken = safeGetAccessToken();
-      const userId = safeGetUserIdFromIdToken();
-
-      const body = {
-        route: "api",
-        action,
-        userId: userId || "",
-        idToken: idToken || "",
-        accessToken: idToken ? "" : (accessToken || ""),
-        ...payload
-      };
-
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 15000);
+      const text = await resp.text();
 
       try {
-        const resp = await fetch(ENDPOINT, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-          signal: controller.signal
-        });
-
-        const text = await resp.text();
-
-        try {
-          return JSON.parse(text);
-        } catch (e) {
-          return {
-            ok: false,
-            message: `API応答エラー\n${text}`
-          };
-        }
+        return JSON.parse(text);
       } catch (e) {
-        if (e.name === "AbortError") {
-          return { ok:false, message:`APIタイムアウト\naction=${action}` };
-        }
-        return { ok:false, message:`通信エラー\naction=${action}\n${e.message || e}` };
-      } finally {
-        clearTimeout(timer);
-      }
-    }
-
-    function setView(view){
-      state.currentView = view;
-      ["calendar", "status", "help"].forEach(v => {
-        $("view" + capitalize(v)).classList.toggle("active", v === view);
-        $("tab" + capitalize(v)).classList.toggle("active", v === view);
-      });
-    }
-
-    function capitalize(s){
-      return s.charAt(0).toUpperCase() + s.slice(1);
-    }
-
-    function setMemberInfo(){
-      $("memberName").textContent = state.memberName || state.profile?.displayName || "未登録";
-      $("memberRole").textContent = state.roleLabel
-        ? `${state.roleLabel} / ${UI_ROLE_RANGE_TEXT}`
-        : UI_ROLE_RANGE_TEXT;
-    }
-
-    function renderSummary(){
-      const used = Number(state.summary?.used ?? 0);
-      const cap = Number(state.summary?.cap ?? 0);
-      const remain = Number(state.summary?.remain ?? Math.max(0, cap - used));
-
-      $("usedValue").textContent = `${used}P`;
-      $("capValue").textContent = cap ? `${cap}P` : "-";
-      $("remainValue").textContent = cap ? `${remain}P` : "-";
-    }
-
-    function normalizeSummary(raw){
-      if (!raw) return { used:0, cap:0, remain:0 };
-
-      const used = Number(raw.used ?? raw.monthUsed ?? raw.pointsUsed ?? 0);
-      const cap = Number(raw.cap ?? raw.monthCap ?? raw.limit ?? 0);
-      const remain = Number(raw.remain ?? raw.remaining ?? Math.max(0, cap - used));
-
-      return { used, cap, remain };
-    }
-
-    function normalizeMonthData(raw){
-      const src = raw?.monthData || raw || {};
-      const ym = String(src.ym || src.month || state.currentYm || "");
-      const days = Array.isArray(src.days) ? src.days : [];
-
-      return {
-        ym,
-        days,
-        canPrev: !!src.canPrev,
-        canNext: !!src.canNext,
-        note: src.note || "",
-        rangeInfo: src.rangeInfo || ""
-      };
-    }
-
-    function getCellClass(day){
-      switch (String(day.state || "")) {
-        case "full": return "full";
-        case "own_off": return "own-off";
-        case "own_late": return "own-late";
-        case "disabled": return "disabled";
-        case "available":
-        default: return "available";
-      }
-    }
-
-    function getCellMini(day){
-      if (day.ownKind === "公休") return "公休";
-      if (day.ownKind === "遅公") return "遅公";
-      if (day.state === "full") return "満枠";
-      if (day.state === "disabled") {
-        return day.badge || "";
-      }
-      return day.badge || "";
-    }
-
-    function renderCalendar(){
-      const wrap = $("calendarGrid");
-      wrap.innerHTML = "";
-
-      const data = state.monthData;
-      if (!data || !data.ym) {
-        wrap.innerHTML = `<div class="notice warn" style="grid-column:1/-1;">カレンダーデータを表示できません。</div>`;
-        return;
-      }
-
-      $("monthLabel").textContent = formatYmLabel(data.ym);
-      $("monthSub").textContent = normalizeRangeText(data.rangeInfo || UI_RANGE_TEXT);
-
-      const ym = parseYm(data.ym);
-      if (!ym) return;
-
-      const firstDow = new Date(ym.y, ym.m - 1, 1).getDay();
-      const lastDay = new Date(ym.y, ym.m, 0).getDate();
-      const map = new Map();
-
-      data.days.forEach(d => {
-        if (d?.date) map.set(String(d.date), d);
-      });
-
-      for (let i = 0; i < firstDow; i++) {
-        const empty = document.createElement("div");
-        empty.className = "day-empty";
-        wrap.appendChild(empty);
-      }
-
-      for (let dayNum = 1; dayNum <= lastDay; dayNum++) {
-        const date = `${data.ym}-${pad2(dayNum)}`;
-        const day = map.get(date) || {
-          date,
-          day: dayNum,
-          state: "disabled",
-          badge: "",
-          ownKind: "",
-          disabledReason: "読込データなし",
-          actions: {
-            canApplyOff: false,
-            canApplyLate: false,
-            canChangeToOff: false,
-            canChangeToLate: false,
-            canCancel: false
-          }
+        return {
+          ok: false,
+          message: `API応答エラー\n${text}`
         };
-
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = `day ${getCellClass(day)}${day.isToday ? " today" : ""}${state.selectedDay?.date === date ? " selected" : ""}`;
-        btn.dataset.date = date;
-
-        btn.innerHTML = `
-          <span class="flag"></span>
-          <div class="num">${day.day || dayNum}</div>
-          <div class="mini">${getCellMini(day)}</div>
-        `;
-
-        btn.addEventListener("click", () => {
-          state.selectedDay = day;
-          openActionSheet(day);
-          renderCalendar();
-        });
-
-        wrap.appendChild(btn);
       }
-
-      const totalCells = firstDow + lastDay;
-      const remain = totalCells % 7 === 0 ? 0 : (7 - (totalCells % 7));
-      for (let i = 0; i < remain; i++) {
-        const empty = document.createElement("div");
-        empty.className = "day-empty";
-        wrap.appendChild(empty);
+    } catch (e) {
+      if (e.name === "AbortError") {
+        return { ok:false, message:`APIタイムアウト\naction=${action}` };
       }
+      return { ok:false, message:`通信エラー\naction=${action}\n${e.message || e}` };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
 
-      $("btnPrevMonth").disabled = !canMoveMonth(-1);
-      $("btnNextMonth").disabled = !canMoveMonth(1);
+  function setView(view){
+    state.currentView = view;
+    ["calendar", "status", "help"].forEach(v => {
+      $("view" + capitalize(v)).classList.toggle("active", v === view);
+      $("tab" + capitalize(v)).classList.toggle("active", v === view);
+    });
+  }
 
-      if (data.note) {
-        $("calendarNotice").textContent = data.note;
-      } else {
-        $("calendarNotice").textContent = "日付をタップすると、その日の申請・変更・取消ができます。";
-      }
+  function capitalize(s){
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  function setMemberInfo(){
+    $("memberName").textContent = state.memberName || state.profile?.displayName || "未登録";
+    $("memberRole").textContent = state.roleLabel
+      ? `${state.roleLabel} / ${UI_ROLE_RANGE_TEXT}`
+      : UI_ROLE_RANGE_TEXT;
+  }
+
+  function renderSummary(){
+    const used = Number(state.summary?.used ?? 0);
+    const cap = Number(state.summary?.cap ?? 0);
+    const remain = Number(state.summary?.remain ?? Math.max(0, cap - used));
+
+    $("usedValue").textContent = `${used}P`;
+    $("capValue").textContent = cap ? `${cap}P` : "-";
+    $("remainValue").textContent = cap ? `${remain}P` : "-";
+  }
+
+  function normalizeSummary(raw){
+    if (!raw) return { used:0, cap:0, remain:0 };
+
+    const used = Number(raw.used ?? raw.monthUsed ?? raw.pointsUsed ?? 0);
+    const cap = Number(raw.cap ?? raw.monthCap ?? raw.limit ?? 0);
+    const remain = Number(raw.remain ?? raw.remaining ?? Math.max(0, cap - used));
+
+    return { used, cap, remain };
+  }
+
+  function normalizeMonthData(raw){
+    const src = raw?.monthData || raw || {};
+    const ym = String(src.ym || src.month || state.currentYm || "");
+    const days = Array.isArray(src.days) ? src.days : [];
+
+    return {
+      ym,
+      days,
+      canPrev: !!src.canPrev,
+      canNext: !!src.canNext,
+      note: src.note || "",
+      rangeInfo: src.rangeInfo || ""
+    };
+  }
+
+  function mergeIdentityFromResponse(res){
+    if (!res || typeof res !== "object") return;
+
+    state.memberName =
+      res.name ||
+      res.memberName ||
+      state.memberName ||
+      state.profile?.displayName ||
+      "未登録";
+
+    state.userId =
+      res.userId ||
+      state.userId ||
+      "";
+
+    state.memberRole =
+      res.role ||
+      state.memberRole ||
+      "";
+
+    state.roleLabel =
+      res.roleLabel ||
+      state.roleLabel ||
+      "";
+  }
+
+  function getCellClass(day){
+    switch (String(day.state || "")) {
+      case "full": return "full";
+      case "own_off": return "own-off";
+      case "own_late": return "own-late";
+      case "disabled": return "disabled";
+      case "available":
+      default: return "available";
+    }
+  }
+
+  function getCellMini(day){
+    if (day.ownKind === "公休") return "公休";
+    if (day.ownKind === "遅公") return "遅公";
+    if (day.state === "full") return "満枠";
+    if (day.state === "disabled") return day.badge || "";
+    return day.badge || "";
+  }
+
+  function renderCalendar(){
+    const wrap = $("calendarGrid");
+    wrap.innerHTML = "";
+
+    const data = state.monthData;
+    if (!data || !data.ym) {
+      wrap.innerHTML = `<div class="notice warn" style="grid-column:1/-1;">カレンダーデータを表示できません。</div>`;
+      $("monthLabel").textContent = "-";
+      $("monthSub").textContent = UI_RANGE_TEXT;
+      return;
     }
 
-    function canMoveMonth(delta){
-      const nextYm = shiftYm(state.currentYm, delta);
-      if (!nextYm) return false;
-      if (compareYm(nextYm, state.baseYm) < 0) return false;
-      if (compareYm(nextYm, state.maxYm) > 0) return false;
-      return true;
-    }
+    $("monthLabel").textContent = formatYmLabel(data.ym);
+    $("monthSub").textContent = normalizeRangeText(data.rangeInfo || UI_RANGE_TEXT);
 
-    async function loadMonth(ym){
-      try {
-        showLoading(true);
+    const ym = parseYm(data.ym);
+    if (!ym) return;
 
-        const res = await apiCall("calendarMonth", { ym });
-        if (!res.ok) {
-          throw new Error(res.message || "月データ取得に失敗しました。");
-        }
+    const firstDow = new Date(ym.y, ym.m - 1, 1).getDay();
+    const lastDay = new Date(ym.y, ym.m, 0).getDate();
+    const map = new Map();
 
-        state.currentYm = String(res.ym || res.monthData?.ym || ym || state.currentYm);
-        state.monthData = normalizeMonthData(res);
-        state.summary = normalizeSummary(res.summary || res.monthSummary || state.summary);
-        renderSummary();
-        renderCalendar();
-      } finally {
-        showLoading(false);
-      }
-    }
-
-    async function loadStatus(){
-      try {
-        $("statusBox").textContent = "読込中…";
-        const res = await apiCall("status", {});
-        if (!res.ok) throw new Error(res.message || "状況取得に失敗しました。");
-        state.statusText = res.planText || res.message || "データなし";
-        $("statusBox").textContent = state.statusText;
-      } catch (e) {
-        $("statusBox").textContent = `読込失敗\n${e.message || e}`;
-      }
-    }
-
-    function openActionSheet(day){
-      const actions = day.actions || {};
-      const ownKind = String(day.ownKind || "");
-      const descLines = [];
-
-      if (ownKind) {
-        descLines.push(`現在の申請：${ownKind}`);
-      } else if (day.state === "full") {
-        descLines.push("現在：満枠");
-      } else if (day.state === "disabled") {
-        descLines.push("現在：申請制限あり");
-      } else {
-        descLines.push("現在：申請可能");
-      }
-
-      if (day.disabledReason) {
-        descLines.push(day.disabledReason);
-      }
-
-      $("sheetDateLabel").textContent = formatDateJa(day.date);
-      $("sheetDesc").textContent = descLines.join("\n");
-
-      $("btnApplyOff").disabled = !actions.canApplyOff;
-      $("btnApplyLate").disabled = !actions.canApplyLate;
-      $("btnChangeOff").disabled = !actions.canChangeToOff;
-      $("btnChangeLate").disabled = !actions.canChangeToLate;
-      $("btnCancelRequest").disabled = !actions.canCancel;
-
-      $("actionSheet").classList.add("show");
-      $("sheetOverlay").classList.add("show");
-      $("actionSheet").setAttribute("aria-hidden", "false");
-    }
-
-    function closeActionSheet(){
-      $("actionSheet").classList.remove("show");
-      $("sheetOverlay").classList.remove("show");
-      $("actionSheet").setAttribute("aria-hidden", "true");
-    }
-
-    async function postApply(kind){
-      if (!state.selectedDay?.date) return;
-      const res = await apiCall("apply", { kind, date: state.selectedDay.date, memo: "" });
-      if (!res.ok) throw new Error(res.message || "申請に失敗しました。");
-      showToast(`受付OK\n${kind} ${state.selectedDay.date}`);
-      await afterMutation(res);
-    }
-
-    async function postChange(kind){
-      if (!state.selectedDay?.date) return;
-      const res = await apiCall("change", { kind, date: state.selectedDay.date });
-      if (!res.ok) throw new Error(res.message || "変更に失敗しました。");
-      showToast(`変更OK\n${state.selectedDay.date}`);
-      await afterMutation(res);
-    }
-
-    async function postCancel(){
-      if (!state.selectedDay?.date) return;
-      const res = await apiCall("cancel", { date: state.selectedDay.date });
-      if (!res.ok) throw new Error(res.message || "取消に失敗しました。");
-      showToast(`取消OK\n${state.selectedDay.date}`);
-      await afterMutation(res);
-    }
-
-    async function afterMutation(res){
-      closeActionSheet();
-      if (res?.planText) {
-        state.statusText = res.planText;
-        $("statusBox").textContent = res.planText;
-      } else {
-        await loadStatus();
-      }
-      await loadMonth(state.currentYm);
-    }
-
-    async function guarded(fn){
-      try {
-        showLoading(true);
-        await fn();
-      } catch (e) {
-        showToast(e.message || String(e));
-      } finally {
-        showLoading(false);
-      }
-    }
-
-    async function initialize(){
-      showLoading(true);
-      $("subtitle").textContent = "LIFF初期化中…";
-
-      try {
-        await liff.init({ liffId: LIFF_ID });
-        $("subtitle").textContent = "LINEログイン確認中…";
-
-        if (!liff.isLoggedIn()) {
-          liff.login({ redirectUri: location.href });
-          return;
-        }
-
-        try {
-          state.profile = await liff.getProfile();
-        } catch (e) {
-          state.profile = null;
-        }
-
-        $("subtitle").textContent = "初期データ取得中…";
-
-        const initRes = await apiCall("calendarInit", {
-          ym: "",
-          view: getQueryParam("view") || "calendar",
-          offset: Number(getQueryParam("offset") || "0")
-        });
-
-        if (!initRes.ok) {
-          throw new Error(initRes.message || "初期化に失敗しました。");
-        }
-
-        state.memberName = initRes.name || state.profile?.displayName || "未登録";
-        state.userId = initRes.userId || state.profile?.userId || "";
-        state.memberRole = initRes.role || "";
-        state.roleLabel = initRes.roleLabel || "";
-        state.summary = normalizeSummary(initRes.summary || initRes.monthSummary);
-        state.monthData = normalizeMonthData(initRes);
-        state.currentYm = String(initRes.currentYm || initRes.monthData?.ym || ymLocal());
-        state.baseYm = String(initRes.baseYm || ymLocal());
-        state.maxYm = shiftYm(state.baseYm, UI_MAX_MONTH_OFFSET);
-
-        $("subtitle").textContent = state.userId
-          ? `LINE連携済み / ${state.userId}`
-          : "LINE連携済み";
-
-        setMemberInfo();
-        renderSummary();
-        renderCalendar();
-        await loadStatus();
-
-        const initialView = String(getQueryParam("view") || "calendar");
-        if (initialView === "status") {
-          setView("status");
-        } else if (initialView === "help") {
-          setView("help");
-        } else {
-          setView("calendar");
-        }
-
-        if (Number(getQueryParam("offset") || "0") === 1) {
-          const nextYm = shiftYm(state.baseYm, 1);
-          if (compareYm(nextYm, state.maxYm) <= 0) {
-            state.currentYm = nextYm;
-            await loadMonth(nextYm);
-          }
-        }
-
-      } catch (e) {
-        $("subtitle").textContent = "初期化失敗";
-        $("calendarGrid").innerHTML = `<div class="notice warn" style="grid-column:1/-1;">${(e.message || e).replace(/\n/g, "<br>")}</div>`;
-        $("statusBox").textContent = e.message || String(e);
-        $("calendarNotice").textContent = "GAS側のUI APIが未反映、または通信エラーです。";
-      } finally {
-        showLoading(false);
-      }
-    }
-
-    $("btnClose").addEventListener("click", () => {
-      try { liff.closeWindow(); }
-      catch(e){ history.back(); }
+    data.days.forEach(d => {
+      if (d?.date) map.set(String(d.date), d);
     });
 
-    $("btnRefresh").addEventListener("click", () => guarded(async () => {
-      await loadMonth(state.currentYm);
+    for (let i = 0; i < firstDow; i++) {
+      const empty = document.createElement("div");
+      empty.className = "day-empty";
+      wrap.appendChild(empty);
+    }
+
+    for (let dayNum = 1; dayNum <= lastDay; dayNum++) {
+      const date = `${data.ym}-${pad2(dayNum)}`;
+      const day = map.get(date) || {
+        date,
+        day: dayNum,
+        state: "disabled",
+        badge: "",
+        ownKind: "",
+        disabledReason: "読込データなし",
+        actions: {
+          canApplyOff: false,
+          canApplyLate: false,
+          canChangeToOff: false,
+          canChangeToLate: false,
+          canCancel: false
+        }
+      };
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = `day ${getCellClass(day)}${day.isToday ? " today" : ""}${state.selectedDay?.date === date ? " selected" : ""}`;
+      btn.dataset.date = date;
+
+      btn.innerHTML = `
+        <span class="flag"></span>
+        <div class="num">${day.day || dayNum}</div>
+        <div class="mini">${getCellMini(day)}</div>
+      `;
+
+      btn.addEventListener("click", () => {
+        state.selectedDay = day;
+        openActionSheet(day);
+        renderCalendar();
+      });
+
+      wrap.appendChild(btn);
+    }
+
+    const totalCells = firstDow + lastDay;
+    const remain = totalCells % 7 === 0 ? 0 : (7 - (totalCells % 7));
+    for (let i = 0; i < remain; i++) {
+      const empty = document.createElement("div");
+      empty.className = "day-empty";
+      wrap.appendChild(empty);
+    }
+
+    $("btnPrevMonth").disabled = !canMoveMonth(-1);
+    $("btnNextMonth").disabled = !canMoveMonth(1);
+
+    if (data.note) {
+      $("calendarNotice").textContent = data.note;
+    } else {
+      $("calendarNotice").textContent = "日付をタップすると、その日の申請・変更・取消ができます。";
+    }
+  }
+
+  function canMoveMonth(delta){
+    const nextYm = shiftYm(state.currentYm, delta);
+    if (!nextYm) return false;
+    if (compareYm(nextYm, state.baseYm) < 0) return false;
+    if (compareYm(nextYm, state.maxYm) > 0) return false;
+    return true;
+  }
+
+  async function loadMonth(ym){
+    const res = await apiCall("calendarMonth", { ym });
+    if (!res.ok) {
+      throw new Error(res.message || "月データ取得に失敗しました。");
+    }
+
+    mergeIdentityFromResponse(res);
+
+    state.currentYm = String(res.ym || res.monthData?.ym || ym || state.currentYm);
+    state.monthData = normalizeMonthData(res);
+
+    if (res.summary || res.monthSummary) {
+      state.summary = normalizeSummary(res.summary || res.monthSummary);
+    } else if (!state.summary) {
+      state.summary = { used:0, cap:0, remain:0 };
+    }
+
+    setMemberInfo();
+    renderSummary();
+    renderCalendar();
+  }
+
+  async function loadStatus(){
+    try {
+      $("statusBox").textContent = "読込中…";
+      const res = await apiCall("status", {});
+      if (!res.ok) throw new Error(res.message || "状況取得に失敗しました。");
+      state.statusText = res.planText || res.message || "データなし";
+      $("statusBox").textContent = state.statusText;
+    } catch (e) {
+      $("statusBox").textContent = `読込失敗\n${e.message || e}`;
+    }
+  }
+
+  function openActionSheet(day){
+    const actions = day.actions || {};
+    const ownKind = String(day.ownKind || "");
+    const descLines = [];
+
+    if (ownKind) {
+      descLines.push(`現在の申請：${ownKind}`);
+    } else if (day.state === "full") {
+      descLines.push("現在：満枠");
+    } else if (day.state === "disabled") {
+      descLines.push("現在：申請制限あり");
+    } else {
+      descLines.push("現在：申請可能");
+    }
+
+    if (day.disabledReason) {
+      descLines.push(day.disabledReason);
+    }
+
+    $("sheetDateLabel").textContent = formatDateJa(day.date);
+    $("sheetDesc").textContent = descLines.join("\n");
+
+    $("btnApplyOff").disabled = !actions.canApplyOff;
+    $("btnApplyLate").disabled = !actions.canApplyLate;
+    $("btnChangeOff").disabled = !actions.canChangeToOff;
+    $("btnChangeLate").disabled = !actions.canChangeToLate;
+    $("btnCancelRequest").disabled = !actions.canCancel;
+
+    $("actionSheet").classList.add("show");
+    $("sheetOverlay").classList.add("show");
+    $("actionSheet").setAttribute("aria-hidden", "false");
+  }
+
+  function closeActionSheet(){
+    $("actionSheet").classList.remove("show");
+    $("sheetOverlay").classList.remove("show");
+    $("actionSheet").setAttribute("aria-hidden", "true");
+  }
+
+  async function postApply(kind){
+    if (!state.selectedDay?.date) return;
+    const res = await apiCall("apply", { kind, date: state.selectedDay.date, memo: "" });
+    if (!res.ok) throw new Error(res.message || "申請に失敗しました。");
+    showToast(`受付OK\n${kind} ${state.selectedDay.date}`);
+    await afterMutation(res);
+  }
+
+  async function postChange(kind){
+    if (!state.selectedDay?.date) return;
+    const res = await apiCall("change", { kind, date: state.selectedDay.date });
+    if (!res.ok) throw new Error(res.message || "変更に失敗しました。");
+    showToast(`変更OK\n${state.selectedDay.date}`);
+    await afterMutation(res);
+  }
+
+  async function postCancel(){
+    if (!state.selectedDay?.date) return;
+    const res = await apiCall("cancel", { date: state.selectedDay.date });
+    if (!res.ok) throw new Error(res.message || "取消に失敗しました。");
+    showToast(`取消OK\n${state.selectedDay.date}`);
+    await afterMutation(res);
+  }
+
+  async function afterMutation(res){
+    closeActionSheet();
+
+    if (res?.planText) {
+      state.statusText = res.planText;
+      $("statusBox").textContent = res.planText;
+    } else {
       await loadStatus();
-      showToast("更新しました");
-    }));
+    }
 
-    $("btnMonthCurrent").addEventListener("click", () => guarded(async () => {
-      state.currentYm = state.baseYm;
-      await loadMonth(state.currentYm);
-      setView("calendar");
-    }));
+    await loadMonth(state.currentYm);
+  }
 
-    $("btnMonthNext").addEventListener("click", () => guarded(async () => {
-      const ym = shiftYm(state.baseYm, 1);
-      if (compareYm(ym, state.maxYm) > 0) {
-        showToast("来月表示が範囲外です");
+  async function guarded(fn){
+    try {
+      showLoading(true);
+      await fn();
+    } catch (e) {
+      showToast(e.message || String(e));
+    } finally {
+      showLoading(false);
+    }
+  }
+
+  async function initialize(){
+    showLoading(true);
+    $("subtitle").textContent = "LIFF初期化中…";
+
+    try {
+      await liff.init({ liffId: LIFF_ID });
+      $("subtitle").textContent = "LINEログイン確認中…";
+
+      if (!liff.isLoggedIn()) {
+        liff.login({ redirectUri: location.href });
         return;
       }
-      state.currentYm = ym;
-      await loadMonth(state.currentYm);
-      setView("calendar");
-    }));
 
-    $("btnPrevMonth").addEventListener("click", () => guarded(async () => {
-      if (!canMoveMonth(-1)) return;
-      state.currentYm = shiftYm(state.currentYm, -1);
-      await loadMonth(state.currentYm);
-    }));
+      try {
+        state.profile = await liff.getProfile();
+      } catch (e) {
+        state.profile = null;
+      }
 
-    $("btnNextMonth").addEventListener("click", () => guarded(async () => {
-      if (!canMoveMonth(1)) return;
-      state.currentYm = shiftYm(state.currentYm, 1);
-      await loadMonth(state.currentYm);
-    }));
+      $("subtitle").textContent = "初期データ取得中…";
 
-    $("btnStatusReload").addEventListener("click", () => guarded(async () => {
+      const initRes = await apiCall("calendarInit", {
+        ym: "",
+        view: getQueryParam("view") || "calendar",
+        offset: Number(getQueryParam("offset") || "0")
+      });
+
+      if (!initRes.ok) {
+        throw new Error(initRes.message || "初期化に失敗しました。");
+      }
+
+      mergeIdentityFromResponse(initRes);
+
+      state.summary = initRes.summary || initRes.monthSummary
+        ? normalizeSummary(initRes.summary || initRes.monthSummary)
+        : { used:0, cap:0, remain:0 };
+
+      state.baseYm = String(initRes.baseYm || ymLocal());
+      state.currentYm = String(initRes.currentYm || initRes.monthData?.ym || state.baseYm || ymLocal());
+      state.maxYm = shiftYm(state.baseYm, UI_MAX_MONTH_OFFSET);
+
+      $("subtitle").textContent = state.userId
+        ? `LINE連携済み / ${state.userId}`
+        : "LINE連携済み";
+
+      setMemberInfo();
+      renderSummary();
+
+      const initialView = String(getQueryParam("view") || "calendar");
+      if (initialView === "status") {
+        setView("status");
+      } else if (initialView === "help") {
+        setView("help");
+      } else {
+        setView("calendar");
+      }
+
+      let firstYm = state.currentYm;
+      if (Number(getQueryParam("offset") || "0") === 1) {
+        const nextYm = shiftYm(state.baseYm, 1);
+        if (nextYm && compareYm(nextYm, state.maxYm) <= 0) {
+          firstYm = nextYm;
+        }
+      }
+
+      state.currentYm = firstYm;
+
+      // 初回表示は必ず表示対象月を1回だけ取得する
+      await loadMonth(state.currentYm);
+
+      // 状況表示は別取得
       await loadStatus();
-      setView("status");
-      showToast("申請状況を更新しました");
-    }));
 
-    $("btnStatusRefresh2").addEventListener("click", () => guarded(async () => {
-      await loadStatus();
-      showToast("申請状況を更新しました");
-    }));
+    } catch (e) {
+      $("subtitle").textContent = "初期化失敗";
+      $("calendarGrid").innerHTML = `<div class="notice warn" style="grid-column:1/-1;">${(e.message || e).replace(/\n/g, "<br>")}</div>`;
+      $("statusBox").textContent = e.message || String(e);
+      $("calendarNotice").textContent = "GAS側のUI APIが未反映、または通信エラーです。";
+    } finally {
+      showLoading(false);
+    }
+  }
 
-    $("btnHelpOpen").addEventListener("click", () => setView("help"));
+  $("btnClose").addEventListener("click", () => {
+    try { liff.closeWindow(); }
+    catch(e){ history.back(); }
+  });
 
-    $("tabCalendar").addEventListener("click", () => setView("calendar"));
-    $("tabStatus").addEventListener("click", () => setView("status"));
-    $("tabHelp").addEventListener("click", () => setView("help"));
+  $("btnRefresh").addEventListener("click", () => guarded(async () => {
+    await loadMonth(state.currentYm);
+    await loadStatus();
+    showToast("更新しました");
+  }));
 
-    $("btnSheetClose").addEventListener("click", closeActionSheet);
-    $("btnCloseSheet2").addEventListener("click", closeActionSheet);
-    $("sheetOverlay").addEventListener("click", closeActionSheet);
+  $("btnMonthCurrent").addEventListener("click", () => guarded(async () => {
+    state.currentYm = state.baseYm;
+    await loadMonth(state.currentYm);
+    setView("calendar");
+  }));
 
-    $("btnApplyOff").addEventListener("click", () => guarded(async () => {
-      await postApply("公休");
-    }));
+  $("btnMonthNext").addEventListener("click", () => guarded(async () => {
+    const ym = shiftYm(state.baseYm, 1);
+    if (!ym || compareYm(ym, state.maxYm) > 0) {
+      showToast("来月表示が範囲外です");
+      return;
+    }
+    state.currentYm = ym;
+    await loadMonth(state.currentYm);
+    setView("calendar");
+  }));
 
-    $("btnApplyLate").addEventListener("click", () => guarded(async () => {
-      await postApply("遅公");
-    }));
+  $("btnPrevMonth").addEventListener("click", () => guarded(async () => {
+    if (!canMoveMonth(-1)) return;
+    state.currentYm = shiftYm(state.currentYm, -1);
+    await loadMonth(state.currentYm);
+  }));
 
-    $("btnChangeOff").addEventListener("click", () => guarded(async () => {
-      await postChange("公休");
-    }));
+  $("btnNextMonth").addEventListener("click", () => guarded(async () => {
+    if (!canMoveMonth(1)) return;
+    state.currentYm = shiftYm(state.currentYm, 1);
+    await loadMonth(state.currentYm);
+  }));
 
-    $("btnChangeLate").addEventListener("click", () => guarded(async () => {
-      await postChange("遅公");
-    }));
+  $("btnStatusReload").addEventListener("click", () => guarded(async () => {
+    await loadStatus();
+    setView("status");
+    showToast("申請状況を更新しました");
+  }));
 
-    $("btnCancelRequest").addEventListener("click", () => guarded(async () => {
-      await postCancel();
-    }));
+  $("btnStatusRefresh2").addEventListener("click", () => guarded(async () => {
+    await loadStatus();
+    showToast("申請状況を更新しました");
+  }));
 
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeActionSheet();
-    });
+  $("btnHelpOpen").addEventListener("click", () => setView("help"));
 
-    initialize();
-  </script>
+  $("tabCalendar").addEventListener("click", () => setView("calendar"));
+  $("tabStatus").addEventListener("click", () => setView("status"));
+  $("tabHelp").addEventListener("click", () => setView("help"));
+
+  $("btnSheetClose").addEventListener("click", closeActionSheet);
+  $("btnCloseSheet2").addEventListener("click", closeActionSheet);
+  $("sheetOverlay").addEventListener("click", closeActionSheet);
+
+  $("btnApplyOff").addEventListener("click", () => guarded(async () => {
+    await postApply("公休");
+  }));
+
+  $("btnApplyLate").addEventListener("click", () => guarded(async () => {
+    await postApply("遅公");
+  }));
+
+  $("btnChangeOff").addEventListener("click", () => guarded(async () => {
+    await postChange("公休");
+  }));
+
+  $("btnChangeLate").addEventListener("click", () => guarded(async () => {
+    await postChange("遅公");
+  }));
+
+  $("btnCancelRequest").addEventListener("click", () => guarded(async () => {
+    await postCancel();
+  }));
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeActionSheet();
+  });
+
+  initialize();
+</script>
 </body>
 </html>
