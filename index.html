@@ -945,13 +945,85 @@
     });
   }
 
-  function clearCachedMonth(ym){
-    if (!ym) return;
-    delete state.monthCache[ym];
-  }
-
   function clearAllMonthCache(){
     state.monthCache = {};
+  }
+
+  function normalizeOwnKind(raw){
+    const s = String(raw || "").trim();
+    if (!s) return "";
+
+    if (["公休", "off", "OFF", "own_off", "休み"].includes(s)) return "公休";
+    if (["遅公", "late", "LATE", "own_late"].includes(s)) return "遅公";
+
+    return s === "公休" || s === "遅公" ? s : "";
+  }
+
+  function deriveOwnKind(day){
+    return normalizeOwnKind(
+      day?.ownKind ??
+      day?.myStatus ??
+      day?.requestType ??
+      day?.statusName ??
+      day?.mine ??
+      ""
+    );
+  }
+
+  function deriveState(day, ownKind, count, limit){
+    if (ownKind === "公休") return "own_off";
+    if (ownKind === "遅公") return "own_late";
+
+    const raw = String(day?.state || day?.status || "").trim();
+    if (["available", "full", "disabled"].includes(raw)) return raw;
+    if (raw === "own_off" || raw === "own_late") return raw;
+
+    if (Number.isFinite(count) && Number.isFinite(limit)) {
+      if (count >= limit) return "full";
+      return "available";
+    }
+
+    return "available";
+  }
+
+  function deriveActions(ownKind, state){
+    if (ownKind === "公休") {
+      return {
+        canApplyOff: false,
+        canApplyLate: false,
+        canChangeToOff: false,
+        canChangeToLate: true,
+        canCancel: true
+      };
+    }
+
+    if (ownKind === "遅公") {
+      return {
+        canApplyOff: false,
+        canApplyLate: false,
+        canChangeToOff: true,
+        canChangeToLate: false,
+        canCancel: true
+      };
+    }
+
+    if (state === "available") {
+      return {
+        canApplyOff: true,
+        canApplyLate: true,
+        canChangeToOff: false,
+        canChangeToLate: false,
+        canCancel: false
+      };
+    }
+
+    return {
+      canApplyOff: false,
+      canApplyLate: false,
+      canChangeToOff: false,
+      canChangeToLate: false,
+      canCancel: false
+    };
   }
 
   function normalizeDayObject(day, fallbackDate = ""){
@@ -959,17 +1031,27 @@
     const m = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     const dayNum = m ? Number(m[3]) : Number(day?.day || 0);
 
+    const count = day?.count === undefined || day?.count === null || day?.count === ""
+      ? null
+      : Number(day.count);
+
+    const limit = day?.limit === undefined || day?.limit === null || day?.limit === ""
+      ? null
+      : Number(day.limit);
+
+    const ownKind = deriveOwnKind(day);
+    const stateName = deriveState(day, ownKind, count, limit);
+    const actions = deriveActions(ownKind, stateName);
+
     return {
       ...day,
       date,
       day: day?.day ?? dayNum,
-      actions: day?.actions || {
-        canApplyOff: false,
-        canApplyLate: false,
-        canChangeToOff: false,
-        canChangeToLate: false,
-        canCancel: false
-      }
+      count,
+      limit,
+      ownKind,
+      state: stateName,
+      actions
     };
   }
 
@@ -987,25 +1069,20 @@
       state: "disabled",
       badge: "",
       ownKind: "",
-      disabledReason: "読込データなし",
-      actions: {
-        canApplyOff: false,
-        canApplyLate: false,
-        canChangeToOff: false,
-        canChangeToLate: false,
-        canCancel: false
-      }
+      disabledReason: "読込データなし"
     }, date);
   }
 
   function replaceDayInMonthData(monthData, newDay){
     if (!monthData?.days || !Array.isArray(monthData.days) || !newDay?.date) return;
 
-    const idx = monthData.days.findIndex(d => String(d?.date || "") === String(newDay.date));
+    const normalized = normalizeDayObject(newDay, newDay.date);
+    const idx = monthData.days.findIndex(d => String(d?.date || "") === String(normalized.date));
+
     if (idx >= 0) {
-      monthData.days[idx] = { ...monthData.days[idx], ...newDay };
+      monthData.days[idx] = normalized;
     } else {
-      monthData.days.push(newDay);
+      monthData.days.push(normalized);
       monthData.days.sort((a, b) => String(a.date).localeCompare(String(b.date)));
     }
   }
@@ -1313,14 +1390,7 @@
         state: "disabled",
         badge: "",
         ownKind: "",
-        disabledReason: "読込データなし",
-        actions: {
-          canApplyOff: false,
-          canApplyLate: false,
-          canChangeToOff: false,
-          canChangeToLate: false,
-          canCancel: false
-        }
+        disabledReason: "読込データなし"
       }, date);
 
       const btn = document.createElement("button");
@@ -1415,35 +1485,6 @@
 
     day.badge = "";
     day.disabledReason = "";
-
-    if (day.ownKind === "公休") {
-      day.state = "own_off";
-      day.actions = {
-        canApplyOff: false,
-        canApplyLate: false,
-        canChangeToOff: false,
-        canChangeToLate: true,
-        canCancel: true
-      };
-    } else if (day.ownKind === "遅公") {
-      day.state = "own_late";
-      day.actions = {
-        canApplyOff: false,
-        canApplyLate: false,
-        canChangeToOff: true,
-        canChangeToLate: false,
-        canCancel: true
-      };
-    } else {
-      day.state = (count !== null && count >= limit) ? "full" : "available";
-      day.actions = {
-        canApplyOff: day.state === "available",
-        canApplyLate: day.state === "available",
-        canChangeToOff: false,
-        canChangeToLate: false,
-        canCancel: false
-      };
-    }
 
     return normalizeDayObject(day, day.date);
   }
@@ -1631,10 +1672,25 @@
     const date = mutation?.date || state.selectedDay?.date || "";
     const ym = state.currentYm || (date ? date.slice(0, 7) : "");
     const baseDay = state.selectedDay ? cloneData(state.selectedDay) : findDayInMonthData(state.monthData, date);
-    let nextDay = extractUpdatedDayFromResponse(res, date);
 
-    if (!nextDay && baseDay) {
-      nextDay = buildOptimisticDay(baseDay, mutation?.op, mutation?.kind);
+    let serverDay = extractUpdatedDayFromResponse(res, date);
+    let optimisticDay = baseDay ? buildOptimisticDay(baseDay, mutation?.op, mutation?.kind) : null;
+    let nextDay = null;
+
+    if (optimisticDay && serverDay) {
+      nextDay = normalizeDayObject({
+        ...optimisticDay,
+        ...serverDay,
+        ownKind: serverDay.ownKind || optimisticDay.ownKind,
+        count: serverDay.count ?? optimisticDay.count,
+        limit: serverDay.limit ?? optimisticDay.limit,
+        badge: serverDay.badge ?? optimisticDay.badge,
+        disabledReason: serverDay.disabledReason ?? optimisticDay.disabledReason
+      }, date);
+    } else if (serverDay) {
+      nextDay = normalizeDayObject(serverDay, date);
+    } else if (optimisticDay) {
+      nextDay = normalizeDayObject(optimisticDay, date);
     }
 
     if (res?.planText) {
