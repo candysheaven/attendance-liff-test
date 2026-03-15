@@ -780,6 +780,9 @@
   const UI_RANGE_TEXT = `当月から${UI_MAX_MONTH_OFFSET}か月先まで操作できます`;
   const UI_ROLE_RANGE_TEXT = `UI対応: 当月〜${UI_MAX_MONTH_OFFSET}か月先`;
 
+  // 安定化優先で申請後の追加月再同期を停止
+  const ENABLE_BACKGROUND_DAY_SYNC = false;
+
   const $ = (id) => document.getElementById(id);
 
   const state = {
@@ -810,7 +813,7 @@
     el.textContent = text || "";
     el.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
+    toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
   }
 
   function pad2(n){
@@ -1129,11 +1132,26 @@
       const text = await resp.text();
 
       try {
-        return JSON.parse(text);
+        const parsed = JSON.parse(text);
+
+        if (!parsed.ok) {
+          const debugLines = [];
+          if (parsed?.debug?.action) debugLines.push(`action=${parsed.debug.action}`);
+          if (parsed?.debug?.status) debugLines.push(`status=${parsed.debug.status}`);
+          if (parsed?.debug?.contentType) debugLines.push(`type=${parsed.debug.contentType}`);
+          if (parsed?.debug?.head) debugLines.push(String(parsed.debug.head).slice(0, 250));
+
+          return {
+            ...parsed,
+            message: `${parsed.message || "APIエラー"}${debugLines.length ? "\n" + debugLines.join("\n") : ""}`
+          };
+        }
+
+        return parsed;
       } catch (e) {
         return {
           ok: false,
-          message: `API応答エラー\n${text}`
+          message: `API応答エラー\naction=${action}\n${String(text).slice(0, 300)}`
         };
       }
     } catch (e) {
@@ -1730,7 +1748,7 @@
       return;
     }
 
-    if (ym && date) {
+    if (ENABLE_BACKGROUND_DAY_SYNC && ym && date) {
       syncSingleDayFromServer(ym, date);
     }
   }
@@ -1790,7 +1808,7 @@
 
       state.baseYm = String(initRes.baseYm || ymLocal());
       state.currentYm = String(initRes.currentYm || initRes.monthData?.ym || state.baseYm || ymLocal());
-      state.maxYm = shiftYm(state.baseYm, UI_MAX_MONTH_OFFSET);
+      state.maxYm = String(initRes.maxYm || shiftYm(state.baseYm, UI_MAX_MONTH_OFFSET));
 
       $("subtitle").textContent = "LINE連携済み";
 
