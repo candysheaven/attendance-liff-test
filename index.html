@@ -1726,74 +1726,77 @@
     await afterMutation(res, { op: "cancel", kind: "", date: state.selectedDay.date });
   }
 
-  async function afterMutation(res, mutation){
-    closeActionSheet();
+async function afterMutation(res, mutation){
+  closeActionSheet();
 
-    const date = mutation?.date || state.selectedDay?.date || "";
-    const ym = state.currentYm || (date ? date.slice(0, 7) : "");
-    const baseDay = state.selectedDay ? cloneData(state.selectedDay) : findDayInMonthData(state.monthData, date);
+  const date = mutation?.date || state.selectedDay?.date || "";
+  const ym = state.currentYm || (date ? date.slice(0, 7) : "");
+  const baseDay = state.selectedDay ? cloneData(state.selectedDay) : findDayInMonthData(state.monthData, date);
 
-    let serverDay = extractUpdatedDayFromResponse(res, date);
-    let optimisticDay = baseDay ? buildOptimisticDay(baseDay, mutation?.op, mutation?.kind) : null;
-    let nextDay = null;
+  let serverDay = extractUpdatedDayFromResponse(res, date);
+  let optimisticDay = baseDay ? buildOptimisticDay(baseDay, mutation?.op, mutation?.kind) : null;
+  let nextDay = null;
 
-    if (optimisticDay && serverDay) {
-      nextDay = normalizeDayObject({
-        ...optimisticDay,
-        ...serverDay,
-        ownKind: serverDay.ownKind || optimisticDay.ownKind,
-        count: serverDay.count ?? optimisticDay.count,
-        limit: serverDay.limit ?? optimisticDay.limit,
-        badge: serverDay.badge ?? optimisticDay.badge,
-        disabledReason: serverDay.disabledReason ?? optimisticDay.disabledReason
-      }, date);
-    } else if (serverDay) {
-      nextDay = normalizeDayObject(serverDay, date);
-    } else if (optimisticDay) {
-      nextDay = normalizeDayObject(optimisticDay, date);
-    }
-
-    if (res?.planText) {
-      state.statusText = res.planText;
-      state.statusLoaded = true;
-      $("statusBox").textContent = res.planText;
-
-      const extracted = extractSummaryFromResponse(res);
-      const parsedSummary = parseSummaryFromPlanText(state.statusText, state.baseYm || ymLocal());
-
-      if (extracted) {
-        state.summary = extracted;
-      } else if (parsedSummary) {
-        state.summary = parsedSummary;
-      }
-
-      renderSummary();
-    } else if (state.statusLoaded) {
-      loadStatus().catch(() => {});
-    }
-
-    if (ym && nextDay) {
-      upsertDayInState(ym, nextDay);
-
-      const liveDay = getLiveDayByDate(date);
-      state.selectedDay = liveDay;
-
-      if (state.monthCache[ym]?.summary) {
-        state.monthCache[ym].summary = cloneData(state.summary);
-      }
-
-      if (!updateRenderedDay(date, liveDay)) {
-        renderCalendar();
-      }
-    } else {
-      await loadMonth(state.currentYm, { force: true });
-      return;
-    }
-
-    if (ENABLE_BACKGROUND_DAY_SYNC && ym && date) {
-      syncSingleDayFromServer(ym, date);
-    }
+  if (optimisticDay && serverDay) {
+    nextDay = normalizeDayObject({
+      ...optimisticDay,
+      ...serverDay,
+      ownKind: serverDay.ownKind || optimisticDay.ownKind,
+      count: serverDay.count ?? optimisticDay.count,
+      limit: serverDay.limit ?? optimisticDay.limit,
+      badge: serverDay.badge ?? optimisticDay.badge,
+      disabledReason: serverDay.disabledReason ?? optimisticDay.disabledReason
+    }, date);
+  } else if (serverDay) {
+    nextDay = normalizeDayObject(serverDay, date);
+  } else if (optimisticDay) {
+    nextDay = normalizeDayObject(optimisticDay, date);
   }
+
+  // ここを追加：GASが返した summary を優先して反映
+  const extractedSummary = extractSummaryFromResponse(res);
+  const parsedSummary = res?.planText
+    ? parseSummaryFromPlanText(res.planText, ym || state.baseYm || ymLocal())
+    : null;
+
+  if (extractedSummary) {
+    state.summary = extractedSummary;
+    renderSummary();
+  } else if (parsedSummary) {
+    state.summary = parsedSummary;
+    renderSummary();
+  }
+
+  if (res?.planText) {
+    state.statusText = res.planText;
+    state.statusLoaded = true;
+    $("statusBox").textContent = res.planText;
+  } else if (state.statusLoaded) {
+    loadStatus().catch(() => {});
+  }
+
+  if (ym && nextDay) {
+    upsertDayInState(ym, nextDay);
+
+    const liveDay = getLiveDayByDate(date);
+    state.selectedDay = liveDay;
+
+    if (!state.monthCache[ym]) state.monthCache[ym] = {};
+    state.monthCache[ym].monthData = cloneData(state.monthData);
+    state.monthCache[ym].summary = cloneData(state.summary);
+
+    if (!updateRenderedDay(date, liveDay)) {
+      renderCalendar();
+    }
+  } else {
+    await loadMonth(state.currentYm, { force: true });
+    return;
+  }
+
+  if (ENABLE_BACKGROUND_DAY_SYNC && ym && date) {
+    syncSingleDayFromServer(ym, date);
+  }
+}
 
   async function guarded(fn){
     try {
