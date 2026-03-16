@@ -1809,102 +1809,112 @@ async function afterMutation(res, mutation){
     }
   }
 
-  async function initialize(){
-    showLoading(true);
-    $("subtitle").textContent = "LIFF初期化中…";
+async function initialize(){
+  showLoading(true);
+  $("subtitle").textContent = "LIFF初期化中…";
 
-    try {
-      await liff.init({ liffId: LIFF_ID });
-      $("subtitle").textContent = "LINEログイン確認中…";
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    $("subtitle").textContent = "LINEログイン確認中…";
 
-      if (!liff.isLoggedIn()) {
-        liff.login({ redirectUri: location.href });
-        return;
+    if (!liff.isLoggedIn()) {
+      liff.login({ redirectUri: location.href });
+      return;
+    }
+
+    state.userId =
+      safeGetUserIdFromContext() ||
+      safeGetUserIdFromIdToken() ||
+      "";
+
+    // 先に投げるが待たない
+    const profilePromise = liff.getProfile().catch(() => null);
+
+    $("subtitle").textContent = "初期データ取得中…";
+
+    const initRes = await apiCall("calendarInit", {
+      ym: "",
+      view: getQueryParam("view") || "calendar",
+      offset: Number(getQueryParam("offset") || "0")
+    });
+
+    if (!initRes.ok) {
+      throw new Error(initRes.message || "初期化に失敗しました。");
+    }
+
+    mergeIdentityFromResponse(initRes);
+
+    const extractedInitSummary = extractSummaryFromResponse(initRes);
+    state.summary = extractedInitSummary || { used:0, cap:0, remain:0 };
+
+    state.baseYm = String(initRes.baseYm || ymLocal());
+    state.currentYm = String(initRes.currentYm || initRes.monthData?.ym || state.baseYm || ymLocal());
+    state.maxYm = String(initRes.maxYm || shiftYm(state.baseYm, UI_MAX_MONTH_OFFSET));
+
+    setMemberInfo();
+    renderSummary();
+
+    const initialView = String(getQueryParam("view") || "calendar");
+    if (initialView === "status") {
+      setView("status");
+    } else if (initialView === "help") {
+      setView("help");
+    } else {
+      setView("calendar");
+    }
+
+    let firstYm = state.currentYm;
+    if (Number(getQueryParam("offset") || "0") === 1) {
+      const nextYm = shiftYm(state.baseYm, 1);
+      if (nextYm && compareYm(nextYm, state.maxYm) <= 0) {
+        firstYm = nextYm;
       }
+    }
 
-      try {
-        state.profile = await liff.getProfile();
-      } catch (e) {
-        state.profile = null;
+    state.currentYm = firstYm;
+
+    const initMonthYm = String(initRes.currentYm || initRes.monthData?.ym || initRes.monthData?.month || "");
+    const hasInitMonthData = !!(initRes.monthData && initMonthYm);
+
+    if (hasInitMonthData && firstYm === initMonthYm) {
+      state.monthData = normalizeMonthData(initRes);
+      setCachedMonth(firstYm, state.monthData, state.summary);
+      renderCalendar();
+    } else {
+      await loadMonth(firstYm);
+    }
+
+    if (initialView === "status") {
+      await ensureStatusLoaded(false);
+    } else {
+      $("statusBox").textContent = "申請状況は表示時に読み込みます。";
+    }
+
+    $("subtitle").textContent = "LINE連携済み";
+
+    // 描画後にプロフィール反映
+    profilePromise.then(profile => {
+      if (!profile) return;
+
+      state.profile = profile;
+      state.userId = state.userId || profile.userId || "";
+
+      if (!state.memberName || state.memberName === "未登録") {
+        state.memberName = profile.displayName || state.memberName;
       }
-
-      state.userId =
-        state.profile?.userId ||
-        safeGetUserIdFromContext() ||
-        safeGetUserIdFromIdToken() ||
-        "";
-
-      $("subtitle").textContent = "初期データ取得中…";
-
-      const initRes = await apiCall("calendarInit", {
-        ym: "",
-        view: getQueryParam("view") || "calendar",
-        offset: Number(getQueryParam("offset") || "0")
-      });
-
-      if (!initRes.ok) {
-        throw new Error(initRes.message || "初期化に失敗しました。");
-      }
-
-      mergeIdentityFromResponse(initRes);
-
-      const extractedInitSummary = extractSummaryFromResponse(initRes);
-      state.summary = extractedInitSummary || { used:0, cap:0, remain:0 };
-
-      state.baseYm = String(initRes.baseYm || ymLocal());
-      state.currentYm = String(initRes.currentYm || initRes.monthData?.ym || state.baseYm || ymLocal());
-      state.maxYm = String(initRes.maxYm || shiftYm(state.baseYm, UI_MAX_MONTH_OFFSET));
-
-      $("subtitle").textContent = "LINE連携済み";
 
       setMemberInfo();
-      renderSummary();
+    }).catch(() => {});
 
-      const initialView = String(getQueryParam("view") || "calendar");
-      if (initialView === "status") {
-        setView("status");
-      } else if (initialView === "help") {
-        setView("help");
-      } else {
-        setView("calendar");
-      }
-
-      let firstYm = state.currentYm;
-      if (Number(getQueryParam("offset") || "0") === 1) {
-        const nextYm = shiftYm(state.baseYm, 1);
-        if (nextYm && compareYm(nextYm, state.maxYm) <= 0) {
-          firstYm = nextYm;
-        }
-      }
-
-      state.currentYm = firstYm;
-
-      const initMonthYm = String(initRes.currentYm || initRes.monthData?.ym || initRes.monthData?.month || "");
-      const hasInitMonthData = !!(initRes.monthData && initMonthYm);
-
-      if (hasInitMonthData && firstYm === initMonthYm) {
-        state.monthData = normalizeMonthData(initRes);
-        setCachedMonth(firstYm, state.monthData, state.summary);
-        renderCalendar();
-      } else {
-        await loadMonth(firstYm);
-      }
-
-      if (initialView === "status") {
-        await ensureStatusLoaded(false);
-      } else {
-        $("statusBox").textContent = "申請状況は表示時に読み込みます。";
-      }
-
-    } catch (e) {
-      $("subtitle").textContent = "初期化失敗";
-      $("calendarGrid").innerHTML = `<div class="notice warn" style="grid-column:1/-1;">${(e.message || e).replace(/\n/g, "<br>")}</div>`;
-      $("statusBox").textContent = e.message || String(e);
-      $("calendarNotice").textContent = "GAS側のUI APIが未反映、または通信エラーです。";
-    } finally {
-      showLoading(false);
-    }
+  } catch (e) {
+    $("subtitle").textContent = "初期化失敗";
+    $("calendarGrid").innerHTML = `<div class="notice warn" style="grid-column:1/-1;">${(e.message || e).replace(/\n/g, "<br>")}</div>`;
+    $("statusBox").textContent = e.message || String(e);
+    $("calendarNotice").textContent = "GAS側のUI APIが未反映、または通信エラーです。";
+  } finally {
+    showLoading(false);
   }
+}
 
   $("btnClose").addEventListener("click", () => {
     try { liff.closeWindow(); }
