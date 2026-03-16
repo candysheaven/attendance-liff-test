@@ -779,8 +779,6 @@
   const UI_MAX_MONTH_OFFSET = 2;
   const UI_RANGE_TEXT = `当月から${UI_MAX_MONTH_OFFSET}か月先まで操作できます`;
   const UI_ROLE_RANGE_TEXT = `UI対応: 当月〜${UI_MAX_MONTH_OFFSET}か月先`;
-
-  // 安定化優先で申請後の追加月再同期を停止
   const ENABLE_BACKGROUND_DAY_SYNC = false;
 
   const $ = (id) => document.getElementById(id);
@@ -1044,7 +1042,18 @@
 
     const ownKind = deriveOwnKind(day);
     const stateName = deriveState(day, ownKind, count, limit);
-    const actions = deriveActions(ownKind, stateName);
+
+    const serverActions = day?.actions && typeof day.actions === "object"
+      ? {
+          canApplyOff: !!day.actions.canApplyOff,
+          canApplyLate: !!day.actions.canApplyLate,
+          canChangeToOff: !!day.actions.canChangeToOff,
+          canChangeToLate: !!day.actions.canChangeToLate,
+          canCancel: !!day.actions.canCancel
+        }
+      : null;
+
+    const actions = serverActions || deriveActions(ownKind, stateName);
 
     return {
       ...day,
