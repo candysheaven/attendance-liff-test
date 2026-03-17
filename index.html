@@ -799,6 +799,7 @@
     roleLabel: "",
     userId: "",
     monthCache: {}
+    prefetchingMonths: {}
   };
 
   function showLoading(flag){
@@ -947,8 +948,67 @@
   }
 
   function clearAllMonthCache(){
-    state.monthCache = {};
+  state.monthCache = {};
+  state.prefetchingMonths = {};
+}
+
+  function isYmInUiRange(ym){
+  if (!ym) return false;
+  if (compareYm(ym, state.baseYm) < 0) return false;
+  if (compareYm(ym, state.maxYm) > 0) return false;
+  return true;
+}
+
+async function prefetchMonthSilent_(ym){
+  if (!ym) return;
+  if (!isYmInUiRange(ym)) return;
+  if (state.monthCache[ym]?.monthData) return;
+  if (state.prefetchingMonths[ym]) return;
+
+  state.prefetchingMonths[ym] = true;
+  try {
+    const res = await apiCall("calendarMonth", { ym });
+    if (!res.ok) return;
+
+    const monthData = normalizeMonthData(res);
+    const summary = extractSummaryFromResponse(res) || null;
+    setCachedMonth(ym, monthData, summary);
+  } catch (e) {
+    // 先読み失敗は無視
+  } finally {
+    delete state.prefetchingMonths[ym];
   }
+}
+
+function schedulePrefetchForwardMonths_(anchorYm){
+  if (!anchorYm) return;
+
+  setTimeout(() => {
+    const next1 = shiftYm(anchorYm, 1);
+    const next2 = shiftYm(anchorYm, 2);
+
+    prefetchMonthSilent_(next1);
+    prefetchMonthSilent_(next2);
+  }, 0);
+}
+
+async function reloadMonthAfterMutationNg_(ym, date){
+  if (!ym) return;
+
+  try {
+    await loadMonth(ym, { force: true });
+
+    if (date) {
+      state.selectedDay = getLiveDayByDate(date);
+    }
+
+    if (state.statusLoaded) {
+      loadStatus().catch(() => {});
+    }
+  } catch (e) {
+    // NG後の再同期失敗は無視
+  }
+}
 
   function normalizeOwnKind(raw){
     const s = String(raw || "").trim();
@@ -1549,46 +1609,73 @@
   }
 
   async function loadMonth(ym, options = {}){
-    const force = !!options.force;
+  const force = !!options.force;
 
-    if (!force) {
-      const cached = getCachedMonth(ym);
-      if (cached?.monthData) {
-        state.currentYm = ym;
-        state.monthData = cached.monthData;
-        if (cached.summary) {
-          state.summary = cached.summary;
-        }
-        setMemberInfo();
-        renderSummary();
-        renderCalendar();
-        return;
+  if (!force) {
+    const cached = getCachedMonth(ym);
+    if (cached?.monthData) {
+      state.currentYm = ym;
+      state.monthData = cached.monthData;
+      if (cached.summary) {
+        state.summary = cached.summary;
       }
+      setMemberInfo();
+      renderSummary();
+      renderCalendar();
+      schedulePrefetchForwardMonths_(state.currentYm);
+      return;
     }
-
-    const res = await apiCall("calendarMonth", { ym });
-    if (!res.ok) {
-      throw new Error(res.message || "月データ取得に失敗しました。");
-    }
-
-    mergeIdentityFromResponse(res);
-
-    state.currentYm = String(res.ym || res.monthData?.ym || ym || state.currentYm);
-    state.monthData = normalizeMonthData(res);
-
-    const extracted = extractSummaryFromResponse(res);
-    if (extracted) {
-      state.summary = extracted;
-    } else if (!state.summary) {
-      state.summary = { used:0, cap:0, remain:0 };
-    }
-
-    setCachedMonth(state.currentYm, state.monthData, state.summary);
-
-    setMemberInfo();
-    renderSummary();
-    renderCalendar();
   }
+
+  const res = await apiCall("calendarMonth", { ym });
+  if (!res.ok) {
+    throw new Error(res.message || "月データ取得に失敗しました。");
+  }
+
+  mergeIdentityFromResponse(res);
+
+  state.currentYm = String(res.ym || res.monthData?.ym || ym || state.currentYm);
+  state.monthData = normalizeMonthData(res);
+
+  const extracted = extractSummaryFromResponse(res);
+  if (extracted) {
+    state.summary = extracted;
+  } else if (!state.summary) {
+    state.summary = { used:0, cap:0, remain:0 };
+  }
+
+  setCachedMonth(state.currentYm, state.monthData, state.summary);
+
+  setMemberInfo();
+  renderSummary();
+  renderCalendar();
+  schedulePrefetchForwardMonths_(state.currentYm);
+}
+
+  const res = await apiCall("calendarMonth", { ym });
+  if (!res.ok) {
+    throw new Error(res.message || "月データ取得に失敗しました。");
+  }
+
+  mergeIdentityFromResponse(res);
+
+  state.currentYm = String(res.ym || res.monthData?.ym || ym || state.currentYm);
+  state.monthData = normalizeMonthData(res);
+
+  const extracted = extractSummaryFromResponse(res);
+  if (extracted) {
+    state.summary = extracted;
+  } else if (!state.summary) {
+    state.summary = { used:0, cap:0, remain:0 };
+  }
+
+  setCachedMonth(state.currentYm, state.monthData, state.summary);
+
+  setMemberInfo();
+  renderSummary();
+  renderCalendar();
+  schedulePrefetchForwardMonths_(state.currentYm);
+}
 
   async function loadStatus(){
     try {
@@ -1703,28 +1790,52 @@
   }
 
   async function postApply(kind){
-    if (!state.selectedDay?.date) return;
-    const res = await apiCall("apply", { kind, date: state.selectedDay.date, memo: "" });
-    if (!res.ok) throw new Error(res.message || "申請に失敗しました。");
-    showToast(`受付OK\n${kind} ${state.selectedDay.date}`);
-    await afterMutation(res, { op: "apply", kind, date: state.selectedDay.date });
+  if (!state.selectedDay?.date) return;
+
+  const targetDate = state.selectedDay.date;
+  const targetYm = targetDate.slice(0, 7);
+
+  const res = await apiCall("apply", { kind, date: targetDate, memo: "" });
+  if (!res.ok) {
+    await reloadMonthAfterMutationNg_(targetYm, targetDate);
+    throw new Error(res.message || "申請に失敗しました。");
   }
+
+  showToast(`受付OK\n${kind} ${targetDate}`);
+  await afterMutation(res, { op: "apply", kind, date: targetDate });
+}
 
   async function postChange(kind){
-    if (!state.selectedDay?.date) return;
-    const res = await apiCall("change", { kind, date: state.selectedDay.date });
-    if (!res.ok) throw new Error(res.message || "変更に失敗しました。");
-    showToast(`変更OK\n${state.selectedDay.date}`);
-    await afterMutation(res, { op: "change", kind, date: state.selectedDay.date });
+  if (!state.selectedDay?.date) return;
+
+  const targetDate = state.selectedDay.date;
+  const targetYm = targetDate.slice(0, 7);
+
+  const res = await apiCall("change", { kind, date: targetDate });
+  if (!res.ok) {
+    await reloadMonthAfterMutationNg_(targetYm, targetDate);
+    throw new Error(res.message || "変更に失敗しました。");
   }
 
+  showToast(`変更OK\n${targetDate}`);
+  await afterMutation(res, { op: "change", kind, date: targetDate });
+}
+
   async function postCancel(){
-    if (!state.selectedDay?.date) return;
-    const res = await apiCall("cancel", { date: state.selectedDay.date });
-    if (!res.ok) throw new Error(res.message || "取消に失敗しました。");
-    showToast(`取消OK\n${state.selectedDay.date}`);
-    await afterMutation(res, { op: "cancel", kind: "", date: state.selectedDay.date });
+  if (!state.selectedDay?.date) return;
+
+  const targetDate = state.selectedDay.date;
+  const targetYm = targetDate.slice(0, 7);
+
+  const res = await apiCall("cancel", { date: targetDate });
+  if (!res.ok) {
+    await reloadMonthAfterMutationNg_(targetYm, targetDate);
+    throw new Error(res.message || "取消に失敗しました。");
   }
+
+  showToast(`取消OK\n${targetDate}`);
+  await afterMutation(res, { op: "cancel", kind: "", date: targetDate });
+}
 
 async function afterMutation(res, mutation){
   closeActionSheet();
@@ -1827,7 +1938,6 @@ async function initialize(){
       safeGetUserIdFromIdToken() ||
       "";
 
-    // 先に投げるが待たない
     const profilePromise = liff.getProfile().catch(() => null);
 
     $("subtitle").textContent = "初期データ取得中…";
@@ -1880,6 +1990,7 @@ async function initialize(){
       state.monthData = normalizeMonthData(initRes);
       setCachedMonth(firstYm, state.monthData, state.summary);
       renderCalendar();
+      schedulePrefetchForwardMonths_(state.currentYm);
     } else {
       await loadMonth(firstYm);
     }
@@ -1892,7 +2003,6 @@ async function initialize(){
 
     $("subtitle").textContent = "LINE連携済み";
 
-    // 描画後にプロフィール反映
     profilePromise.then(profile => {
       if (!profile) return;
 
@@ -1915,7 +2025,6 @@ async function initialize(){
     showLoading(false);
   }
 }
-
   $("btnClose").addEventListener("click", () => {
     try { liff.closeWindow(); }
     catch(e){ history.back(); }
