@@ -1300,15 +1300,67 @@
       : UI_ROLE_RANGE_TEXT;
   }
 
-  function renderSummary(){
-    const used = Number(state.summary?.used ?? 0);
-    const cap = Number(state.summary?.cap ?? 0);
-    const remain = Number(state.summary?.remain ?? Math.max(0, cap - used));
+  function getSummaryCap_(){
+  const cap1 = Number(state.summary?.cap ?? NaN);
+  if (!Number.isNaN(cap1) && cap1 > 0) return cap1;
 
-    $("usedValue").textContent = `${used}P`;
-    $("capValue").textContent = cap ? `${cap}P` : "-";
-    $("remainValue").textContent = cap ? `${remain}P` : "-";
+  const cap2 = Number(state.monthCache?.[state.currentYm]?.summary?.cap ?? NaN);
+  if (!Number.isNaN(cap2) && cap2 > 0) return cap2;
+
+  return 0;
+}
+
+function deriveSummaryFromMonthData_(monthData, fallbackCap = 0){
+  const days = Array.isArray(monthData?.days) ? monthData.days : [];
+
+  let used = 0;
+  for (const d of days) {
+    const ownKind = String(d?.ownKind || "").trim();
+    if (ownKind === "公休") used += 2;
+    else if (ownKind === "遅公") used += 1;
   }
+
+  const cap = Math.max(0, Number(fallbackCap || 0));
+  const remain = Math.max(0, cap - used);
+
+  return { used, cap, remain };
+}
+
+function getDisplaySummary_(){
+  const cap = getSummaryCap_();
+
+  // 表示中の月データがあるなら、それを正本にする
+  if (state.monthData?.ym === state.currentYm && Array.isArray(state.monthData?.days)) {
+    return deriveSummaryFromMonthData_(state.monthData, cap);
+  }
+
+  // フォールバック
+  return {
+    used: Number(state.summary?.used ?? 0),
+    cap: Number(state.summary?.cap ?? 0),
+    remain: Number(state.summary?.remain ?? Math.max(0, Number(state.summary?.cap ?? 0) - Number(state.summary?.used ?? 0)))
+  };
+}
+
+  function renderSummary(){
+  const s = getDisplaySummary_();
+
+  $("usedValue").textContent = `${Number(s.used || 0)}P`;
+  $("capValue").textContent = s.cap ? `${Number(s.cap || 0)}P` : "-";
+  $("remainValue").textContent = s.cap ? `${Number(s.remain || 0)}P` : "-";
+
+  // state.summary も見た目に合わせて同期しておく
+  state.summary = {
+    used: Number(s.used || 0),
+    cap: Number(s.cap || 0),
+    remain: Number(s.remain || 0)
+  };
+
+  if (state.currentYm) {
+    if (!state.monthCache[state.currentYm]) state.monthCache[state.currentYm] = {};
+    state.monthCache[state.currentYm].summary = cloneData(state.summary);
+  }
+}
 
   function normalizeSummary(raw){
     if (!raw) return null;
@@ -1910,6 +1962,7 @@
       if (hasInitMonthData && firstYm === initMonthYm) {
         state.monthData = normalizeMonthData(initRes);
         setCachedMonth(firstYm, state.monthData, state.summary);
+        renderSummary();
         renderCalendar();
         schedulePrefetchForwardMonths_(state.currentYm);
       } else {
