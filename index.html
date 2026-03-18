@@ -798,7 +798,7 @@
     memberRole: "",
     roleLabel: "",
     userId: "",
-    monthCache: {}
+    monthCache: {},
     prefetchingMonths: {}
   };
 
@@ -948,67 +948,67 @@
   }
 
   function clearAllMonthCache(){
-  state.monthCache = {};
-  state.prefetchingMonths = {};
-}
+    state.monthCache = {};
+    state.prefetchingMonths = {};
+  }
 
   function isYmInUiRange(ym){
-  if (!ym) return false;
-  if (compareYm(ym, state.baseYm) < 0) return false;
-  if (compareYm(ym, state.maxYm) > 0) return false;
-  return true;
-}
-
-async function prefetchMonthSilent_(ym){
-  if (!ym) return;
-  if (!isYmInUiRange(ym)) return;
-  if (state.monthCache[ym]?.monthData) return;
-  if (state.prefetchingMonths[ym]) return;
-
-  state.prefetchingMonths[ym] = true;
-  try {
-    const res = await apiCall("calendarMonth", { ym });
-    if (!res.ok) return;
-
-    const monthData = normalizeMonthData(res);
-    const summary = extractSummaryFromResponse(res) || null;
-    setCachedMonth(ym, monthData, summary);
-  } catch (e) {
-    // 先読み失敗は無視
-  } finally {
-    delete state.prefetchingMonths[ym];
+    if (!ym) return false;
+    if (compareYm(ym, state.baseYm) < 0) return false;
+    if (compareYm(ym, state.maxYm) > 0) return false;
+    return true;
   }
-}
 
-function schedulePrefetchForwardMonths_(anchorYm){
-  if (!anchorYm) return;
+  async function prefetchMonthSilent_(ym){
+    if (!ym) return;
+    if (!isYmInUiRange(ym)) return;
+    if (state.monthCache[ym]?.monthData) return;
+    if (state.prefetchingMonths[ym]) return;
 
-  setTimeout(() => {
-    const next1 = shiftYm(anchorYm, 1);
-    const next2 = shiftYm(anchorYm, 2);
+    state.prefetchingMonths[ym] = true;
+    try {
+      const res = await apiCall("calendarMonth", { ym });
+      if (!res.ok) return;
 
-    prefetchMonthSilent_(next1);
-    prefetchMonthSilent_(next2);
-  }, 0);
-}
-
-async function reloadMonthAfterMutationNg_(ym, date){
-  if (!ym) return;
-
-  try {
-    await loadMonth(ym, { force: true });
-
-    if (date) {
-      state.selectedDay = getLiveDayByDate(date);
+      const monthData = normalizeMonthData(res);
+      const summary = extractSummaryFromResponse(res) || null;
+      setCachedMonth(ym, monthData, summary);
+    } catch (e) {
+      // 先読み失敗は無視
+    } finally {
+      delete state.prefetchingMonths[ym];
     }
-
-    if (state.statusLoaded) {
-      loadStatus().catch(() => {});
-    }
-  } catch (e) {
-    // NG後の再同期失敗は無視
   }
-}
+
+  function schedulePrefetchForwardMonths_(anchorYm){
+    if (!anchorYm) return;
+
+    setTimeout(() => {
+      const next1 = shiftYm(anchorYm, 1);
+      const next2 = shiftYm(anchorYm, 2);
+
+      prefetchMonthSilent_(next1);
+      prefetchMonthSilent_(next2);
+    }, 0);
+  }
+
+  async function reloadMonthAfterMutationNg_(ym, date){
+    if (!ym) return;
+
+    try {
+      await loadMonth(ym, { force: true });
+
+      if (date) {
+        state.selectedDay = getLiveDayByDate(date);
+      }
+
+      if (state.statusLoaded) {
+        loadStatus().catch(() => {});
+      }
+    } catch (e) {
+      // NG後の再同期失敗は無視
+    }
+  }
 
   function normalizeOwnKind(raw){
     const s = String(raw || "").trim();
@@ -1105,7 +1105,7 @@ async function reloadMonthAfterMutationNg_(ym, date){
 
     const serverActions = day?.actions && typeof day.actions === "object"
       ? {
-          canApplyOff: !!day.actions.canApplyOff,
+          canApplyOff: !!day.actions.canApplyOff),
           canApplyLate: !!day.actions.canApplyLate,
           canChangeToOff: !!day.actions.canChangeToOff,
           canChangeToLate: !!day.actions.canChangeToLate,
@@ -1609,73 +1609,48 @@ async function reloadMonthAfterMutationNg_(ym, date){
   }
 
   async function loadMonth(ym, options = {}){
-  const force = !!options.force;
+    const force = !!options.force;
 
-  if (!force) {
-    const cached = getCachedMonth(ym);
-    if (cached?.monthData) {
-      state.currentYm = ym;
-      state.monthData = cached.monthData;
-      if (cached.summary) {
-        state.summary = cached.summary;
+    if (!force) {
+      const cached = getCachedMonth(ym);
+      if (cached?.monthData) {
+        state.currentYm = ym;
+        state.monthData = cached.monthData;
+        if (cached.summary) {
+          state.summary = cached.summary;
+        }
+        setMemberInfo();
+        renderSummary();
+        renderCalendar();
+        schedulePrefetchForwardMonths_(state.currentYm);
+        return;
       }
-      setMemberInfo();
-      renderSummary();
-      renderCalendar();
-      schedulePrefetchForwardMonths_(state.currentYm);
-      return;
     }
+
+    const res = await apiCall("calendarMonth", { ym });
+    if (!res.ok) {
+      throw new Error(res.message || "月データ取得に失敗しました。");
+    }
+
+    mergeIdentityFromResponse(res);
+
+    state.currentYm = String(res.ym || res.monthData?.ym || ym || state.currentYm);
+    state.monthData = normalizeMonthData(res);
+
+    const extracted = extractSummaryFromResponse(res);
+    if (extracted) {
+      state.summary = extracted;
+    } else if (!state.summary) {
+      state.summary = { used:0, cap:0, remain:0 };
+    }
+
+    setCachedMonth(state.currentYm, state.monthData, state.summary);
+
+    setMemberInfo();
+    renderSummary();
+    renderCalendar();
+    schedulePrefetchForwardMonths_(state.currentYm);
   }
-
-  const res = await apiCall("calendarMonth", { ym });
-  if (!res.ok) {
-    throw new Error(res.message || "月データ取得に失敗しました。");
-  }
-
-  mergeIdentityFromResponse(res);
-
-  state.currentYm = String(res.ym || res.monthData?.ym || ym || state.currentYm);
-  state.monthData = normalizeMonthData(res);
-
-  const extracted = extractSummaryFromResponse(res);
-  if (extracted) {
-    state.summary = extracted;
-  } else if (!state.summary) {
-    state.summary = { used:0, cap:0, remain:0 };
-  }
-
-  setCachedMonth(state.currentYm, state.monthData, state.summary);
-
-  setMemberInfo();
-  renderSummary();
-  renderCalendar();
-  schedulePrefetchForwardMonths_(state.currentYm);
-}
-
-  const res = await apiCall("calendarMonth", { ym });
-  if (!res.ok) {
-    throw new Error(res.message || "月データ取得に失敗しました。");
-  }
-
-  mergeIdentityFromResponse(res);
-
-  state.currentYm = String(res.ym || res.monthData?.ym || ym || state.currentYm);
-  state.monthData = normalizeMonthData(res);
-
-  const extracted = extractSummaryFromResponse(res);
-  if (extracted) {
-    state.summary = extracted;
-  } else if (!state.summary) {
-    state.summary = { used:0, cap:0, remain:0 };
-  }
-
-  setCachedMonth(state.currentYm, state.monthData, state.summary);
-
-  setMemberInfo();
-  renderSummary();
-  renderCalendar();
-  schedulePrefetchForwardMonths_(state.currentYm);
-}
 
   async function loadStatus(){
     try {
@@ -1718,71 +1693,70 @@ async function reloadMonthAfterMutationNg_(ym, date){
   }
 
   function openActionSheet(day){
-  const ownKind = String(day.ownKind || "");
-  const badge = String(day.badge || "").trim();
-  const disabledReason = String(day.disabledReason || "").trim();
+    const ownKind = String(day.ownKind || "");
+    const badge = String(day.badge || "").trim();
+    const disabledReason = String(day.disabledReason || "").trim();
 
-  const isLateOnlyPolicy =
-    !ownKind &&
-    (badge === "遅公のみ" || /遅公のみ/.test(disabledReason));
+    const isLateOnlyPolicy =
+      !ownKind &&
+      (badge === "遅公のみ" || /遅公のみ/.test(disabledReason));
 
-  const isOffOnlyPolicy =
-    !ownKind &&
-    (badge === "公休のみ" || /公休のみ/.test(disabledReason));
+    const isOffOnlyPolicy =
+      !ownKind &&
+      (badge === "公休のみ" || /公休のみ/.test(disabledReason));
 
-  let actions = {
-    canApplyOff: !!day?.actions?.canApplyOff,
-    canApplyLate: !!day?.actions?.canApplyLate,
-    canChangeToOff: !!day?.actions?.canChangeToOff,
-    canChangeToLate: !!day?.actions?.canChangeToLate,
-    canCancel: !!day?.actions?.canCancel
-  };
+    let actions = {
+      canApplyOff: !!day?.actions?.canApplyOff,
+      canApplyLate: !!day?.actions?.canApplyLate,
+      canChangeToOff: !!day?.actions?.canChangeToOff,
+      canChangeToLate: !!day?.actions?.canChangeToLate,
+      canCancel: !!day?.actions?.canCancel
+    };
 
-  // GASから actions が来ていても、HTML側で全部 false になってしまうケースの救済
-  // 最終判定はサーバー側で行うので、UI側は対応ボタンを開ける
-  if (!ownKind && !actions.canApplyOff && !actions.canApplyLate) {
-    if (isLateOnlyPolicy) {
-      actions.canApplyLate = true;
-      actions.canApplyOff = false;
-    } else if (isOffOnlyPolicy) {
-      actions.canApplyOff = true;
-      actions.canApplyLate = false;
+    if (!ownKind && !actions.canApplyOff && !actions.canApplyLate) {
+      if (isLateOnlyPolicy) {
+        actions.canApplyLate = true;
+        actions.canApplyOff = false;
+      } else if (isOffOnlyPolicy) {
+        actions.canApplyOff = true;
+        actions.canApplyLate = false;
+      }
     }
+
+    const descLines = [];
+
+    if (ownKind) {
+      descLines.push(`現在の申請：${ownKind}`);
+    } else if (day.state === "full") {
+      descLines.push("現在：満枠");
+    } else if (isLateOnlyPolicy) {
+      descLines.push("現在：遅公のみ申請可能");
+    } else if (isOffOnlyPolicy) {
+      descLines.push("現在：公休のみ申請可能");
+    } else if (day.state === "disabled") {
+      descLines.push("現在：申請制限あり");
+    } else {
+      descLines.push("現在：申請可能");
+    }
+
+    if (disabledReason) {
+      descLines.push(disabledReason);
+    }
+
+    $("sheetDateLabel").textContent = formatDateJa(day.date);
+    $("sheetDesc").textContent = descLines.join("\n");
+
+    $("btnApplyOff").disabled = !actions.canApplyOff;
+    $("btnApplyLate").disabled = !actions.canApplyLate;
+    $("btnChangeOff").disabled = !actions.canChangeToOff;
+    $("btnChangeLate").disabled = !actions.canChangeToLate;
+    $("btnCancelRequest").disabled = !actions.canCancel;
+
+    $("actionSheet").classList.add("show");
+    $("sheetOverlay").classList.add("show");
+    $("actionSheet").setAttribute("aria-hidden", "false");
   }
 
-  const descLines = [];
-
-  if (ownKind) {
-    descLines.push(`現在の申請：${ownKind}`);
-  } else if (day.state === "full") {
-    descLines.push("現在：満枠");
-  } else if (isLateOnlyPolicy) {
-    descLines.push("現在：遅公のみ申請可能");
-  } else if (isOffOnlyPolicy) {
-    descLines.push("現在：公休のみ申請可能");
-  } else if (day.state === "disabled") {
-    descLines.push("現在：申請制限あり");
-  } else {
-    descLines.push("現在：申請可能");
-  }
-
-  if (disabledReason) {
-    descLines.push(disabledReason);
-  }
-
-  $("sheetDateLabel").textContent = formatDateJa(day.date);
-  $("sheetDesc").textContent = descLines.join("\n");
-
-  $("btnApplyOff").disabled = !actions.canApplyOff;
-  $("btnApplyLate").disabled = !actions.canApplyLate;
-  $("btnChangeOff").disabled = !actions.canChangeToOff;
-  $("btnChangeLate").disabled = !actions.canChangeToLate;
-  $("btnCancelRequest").disabled = !actions.canCancel;
-
-  $("actionSheet").classList.add("show");
-  $("sheetOverlay").classList.add("show");
-  $("actionSheet").setAttribute("aria-hidden", "false");
-}
   function closeActionSheet(){
     $("actionSheet").classList.remove("show");
     $("sheetOverlay").classList.remove("show");
@@ -1790,124 +1764,123 @@ async function reloadMonthAfterMutationNg_(ym, date){
   }
 
   async function postApply(kind){
-  if (!state.selectedDay?.date) return;
+    if (!state.selectedDay?.date) return;
 
-  const targetDate = state.selectedDay.date;
-  const targetYm = targetDate.slice(0, 7);
+    const targetDate = state.selectedDay.date;
+    const targetYm = targetDate.slice(0, 7);
 
-  const res = await apiCall("apply", { kind, date: targetDate, memo: "" });
-  if (!res.ok) {
-    await reloadMonthAfterMutationNg_(targetYm, targetDate);
-    throw new Error(res.message || "申請に失敗しました。");
+    const res = await apiCall("apply", { kind, date: targetDate, memo: "" });
+    if (!res.ok) {
+      await reloadMonthAfterMutationNg_(targetYm, targetDate);
+      throw new Error(res.message || "申請に失敗しました。");
+    }
+
+    showToast(`受付OK\n${kind} ${targetDate}`);
+    await afterMutation(res, { op: "apply", kind, date: targetDate });
   }
-
-  showToast(`受付OK\n${kind} ${targetDate}`);
-  await afterMutation(res, { op: "apply", kind, date: targetDate });
-}
 
   async function postChange(kind){
-  if (!state.selectedDay?.date) return;
+    if (!state.selectedDay?.date) return;
 
-  const targetDate = state.selectedDay.date;
-  const targetYm = targetDate.slice(0, 7);
+    const targetDate = state.selectedDay.date;
+    const targetYm = targetDate.slice(0, 7);
 
-  const res = await apiCall("change", { kind, date: targetDate });
-  if (!res.ok) {
-    await reloadMonthAfterMutationNg_(targetYm, targetDate);
-    throw new Error(res.message || "変更に失敗しました。");
+    const res = await apiCall("change", { kind, date: targetDate });
+    if (!res.ok) {
+      await reloadMonthAfterMutationNg_(targetYm, targetDate);
+      throw new Error(res.message || "変更に失敗しました。");
+    }
+
+    showToast(`変更OK\n${targetDate}`);
+    await afterMutation(res, { op: "change", kind, date: targetDate });
   }
-
-  showToast(`変更OK\n${targetDate}`);
-  await afterMutation(res, { op: "change", kind, date: targetDate });
-}
 
   async function postCancel(){
-  if (!state.selectedDay?.date) return;
+    if (!state.selectedDay?.date) return;
 
-  const targetDate = state.selectedDay.date;
-  const targetYm = targetDate.slice(0, 7);
+    const targetDate = state.selectedDay.date;
+    const targetYm = targetDate.slice(0, 7);
 
-  const res = await apiCall("cancel", { date: targetDate });
-  if (!res.ok) {
-    await reloadMonthAfterMutationNg_(targetYm, targetDate);
-    throw new Error(res.message || "取消に失敗しました。");
-  }
-
-  showToast(`取消OK\n${targetDate}`);
-  await afterMutation(res, { op: "cancel", kind: "", date: targetDate });
-}
-
-async function afterMutation(res, mutation){
-  closeActionSheet();
-
-  const date = mutation?.date || state.selectedDay?.date || "";
-  const ym = state.currentYm || (date ? date.slice(0, 7) : "");
-  const baseDay = state.selectedDay ? cloneData(state.selectedDay) : findDayInMonthData(state.monthData, date);
-
-  let serverDay = extractUpdatedDayFromResponse(res, date);
-  let optimisticDay = baseDay ? buildOptimisticDay(baseDay, mutation?.op, mutation?.kind) : null;
-  let nextDay = null;
-
-  if (optimisticDay && serverDay) {
-    nextDay = normalizeDayObject({
-      ...optimisticDay,
-      ...serverDay,
-      ownKind: serverDay.ownKind || optimisticDay.ownKind,
-      count: serverDay.count ?? optimisticDay.count,
-      limit: serverDay.limit ?? optimisticDay.limit,
-      badge: serverDay.badge ?? optimisticDay.badge,
-      disabledReason: serverDay.disabledReason ?? optimisticDay.disabledReason
-    }, date);
-  } else if (serverDay) {
-    nextDay = normalizeDayObject(serverDay, date);
-  } else if (optimisticDay) {
-    nextDay = normalizeDayObject(optimisticDay, date);
-  }
-
-  // ここを追加：GASが返した summary を優先して反映
-  const extractedSummary = extractSummaryFromResponse(res);
-  const parsedSummary = res?.planText
-    ? parseSummaryFromPlanText(res.planText, ym || state.baseYm || ymLocal())
-    : null;
-
-  if (extractedSummary) {
-    state.summary = extractedSummary;
-    renderSummary();
-  } else if (parsedSummary) {
-    state.summary = parsedSummary;
-    renderSummary();
-  }
-
-  if (res?.planText) {
-    state.statusText = res.planText;
-    state.statusLoaded = true;
-    $("statusBox").textContent = res.planText;
-  } else if (state.statusLoaded) {
-    loadStatus().catch(() => {});
-  }
-
-  if (ym && nextDay) {
-    upsertDayInState(ym, nextDay);
-
-    const liveDay = getLiveDayByDate(date);
-    state.selectedDay = liveDay;
-
-    if (!state.monthCache[ym]) state.monthCache[ym] = {};
-    state.monthCache[ym].monthData = cloneData(state.monthData);
-    state.monthCache[ym].summary = cloneData(state.summary);
-
-    if (!updateRenderedDay(date, liveDay)) {
-      renderCalendar();
+    const res = await apiCall("cancel", { date: targetDate });
+    if (!res.ok) {
+      await reloadMonthAfterMutationNg_(targetYm, targetDate);
+      throw new Error(res.message || "取消に失敗しました。");
     }
-  } else {
-    await loadMonth(state.currentYm, { force: true });
-    return;
+
+    showToast(`取消OK\n${targetDate}`);
+    await afterMutation(res, { op: "cancel", kind: "", date: targetDate });
   }
 
-  if (ENABLE_BACKGROUND_DAY_SYNC && ym && date) {
-    syncSingleDayFromServer(ym, date);
+  async function afterMutation(res, mutation){
+    closeActionSheet();
+
+    const date = mutation?.date || state.selectedDay?.date || "";
+    const ym = state.currentYm || (date ? date.slice(0, 7) : "");
+    const baseDay = state.selectedDay ? cloneData(state.selectedDay) : findDayInMonthData(state.monthData, date);
+
+    let serverDay = extractUpdatedDayFromResponse(res, date);
+    let optimisticDay = baseDay ? buildOptimisticDay(baseDay, mutation?.op, mutation?.kind) : null;
+    let nextDay = null;
+
+    if (optimisticDay && serverDay) {
+      nextDay = normalizeDayObject({
+        ...optimisticDay,
+        ...serverDay,
+        ownKind: serverDay.ownKind || optimisticDay.ownKind,
+        count: serverDay.count ?? optimisticDay.count,
+        limit: serverDay.limit ?? optimisticDay.limit,
+        badge: serverDay.badge ?? optimisticDay.badge,
+        disabledReason: serverDay.disabledReason ?? optimisticDay.disabledReason
+      }, date);
+    } else if (serverDay) {
+      nextDay = normalizeDayObject(serverDay, date);
+    } else if (optimisticDay) {
+      nextDay = normalizeDayObject(optimisticDay, date);
+    }
+
+    const extractedSummary = extractSummaryFromResponse(res);
+    const parsedSummary = res?.planText
+      ? parseSummaryFromPlanText(res.planText, ym || state.baseYm || ymLocal())
+      : null;
+
+    if (extractedSummary) {
+      state.summary = extractedSummary;
+      renderSummary();
+    } else if (parsedSummary) {
+      state.summary = parsedSummary;
+      renderSummary();
+    }
+
+    if (res?.planText) {
+      state.statusText = res.planText;
+      state.statusLoaded = true;
+      $("statusBox").textContent = res.planText;
+    } else if (state.statusLoaded) {
+      loadStatus().catch(() => {});
+    }
+
+    if (ym && nextDay) {
+      upsertDayInState(ym, nextDay);
+
+      const liveDay = getLiveDayByDate(date);
+      state.selectedDay = liveDay;
+
+      if (!state.monthCache[ym]) state.monthCache[ym] = {};
+      state.monthCache[ym].monthData = cloneData(state.monthData);
+      state.monthCache[ym].summary = cloneData(state.summary);
+
+      if (!updateRenderedDay(date, liveDay)) {
+        renderCalendar();
+      }
+    } else {
+      await loadMonth(state.currentYm, { force: true });
+      return;
+    }
+
+    if (ENABLE_BACKGROUND_DAY_SYNC && ym && date) {
+      syncSingleDayFromServer(ym, date);
+    }
   }
-}
 
   async function guarded(fn){
     try {
@@ -1920,111 +1893,112 @@ async function afterMutation(res, mutation){
     }
   }
 
-async function initialize(){
-  showLoading(true);
-  $("subtitle").textContent = "LIFF初期化中…";
+  async function initialize(){
+    showLoading(true);
+    $("subtitle").textContent = "LIFF初期化中…";
 
-  try {
-    await liff.init({ liffId: LIFF_ID });
-    $("subtitle").textContent = "LINEログイン確認中…";
+    try {
+      await liff.init({ liffId: LIFF_ID });
+      $("subtitle").textContent = "LINEログイン確認中…";
 
-    if (!liff.isLoggedIn()) {
-      liff.login({ redirectUri: location.href });
-      return;
-    }
-
-    state.userId =
-      safeGetUserIdFromContext() ||
-      safeGetUserIdFromIdToken() ||
-      "";
-
-    const profilePromise = liff.getProfile().catch(() => null);
-
-    $("subtitle").textContent = "初期データ取得中…";
-
-    const initRes = await apiCall("calendarInit", {
-      ym: "",
-      view: getQueryParam("view") || "calendar",
-      offset: Number(getQueryParam("offset") || "0")
-    });
-
-    if (!initRes.ok) {
-      throw new Error(initRes.message || "初期化に失敗しました。");
-    }
-
-    mergeIdentityFromResponse(initRes);
-
-    const extractedInitSummary = extractSummaryFromResponse(initRes);
-    state.summary = extractedInitSummary || { used:0, cap:0, remain:0 };
-
-    state.baseYm = String(initRes.baseYm || ymLocal());
-    state.currentYm = String(initRes.currentYm || initRes.monthData?.ym || state.baseYm || ymLocal());
-    state.maxYm = String(initRes.maxYm || shiftYm(state.baseYm, UI_MAX_MONTH_OFFSET));
-
-    setMemberInfo();
-    renderSummary();
-
-    const initialView = String(getQueryParam("view") || "calendar");
-    if (initialView === "status") {
-      setView("status");
-    } else if (initialView === "help") {
-      setView("help");
-    } else {
-      setView("calendar");
-    }
-
-    let firstYm = state.currentYm;
-    if (Number(getQueryParam("offset") || "0") === 1) {
-      const nextYm = shiftYm(state.baseYm, 1);
-      if (nextYm && compareYm(nextYm, state.maxYm) <= 0) {
-        firstYm = nextYm;
+      if (!liff.isLoggedIn()) {
+        liff.login({ redirectUri: location.href });
+        return;
       }
-    }
 
-    state.currentYm = firstYm;
+      state.userId =
+        safeGetUserIdFromContext() ||
+        safeGetUserIdFromIdToken() ||
+        "";
 
-    const initMonthYm = String(initRes.currentYm || initRes.monthData?.ym || initRes.monthData?.month || "");
-    const hasInitMonthData = !!(initRes.monthData && initMonthYm);
+      const profilePromise = liff.getProfile().catch(() => null);
 
-    if (hasInitMonthData && firstYm === initMonthYm) {
-      state.monthData = normalizeMonthData(initRes);
-      setCachedMonth(firstYm, state.monthData, state.summary);
-      renderCalendar();
-      schedulePrefetchForwardMonths_(state.currentYm);
-    } else {
-      await loadMonth(firstYm);
-    }
+      $("subtitle").textContent = "初期データ取得中…";
 
-    if (initialView === "status") {
-      await ensureStatusLoaded(false);
-    } else {
-      $("statusBox").textContent = "申請状況は表示時に読み込みます。";
-    }
+      const initRes = await apiCall("calendarInit", {
+        ym: "",
+        view: getQueryParam("view") || "calendar",
+        offset: Number(getQueryParam("offset") || "0")
+      });
 
-    $("subtitle").textContent = "LINE連携済み";
-
-    profilePromise.then(profile => {
-      if (!profile) return;
-
-      state.profile = profile;
-      state.userId = state.userId || profile.userId || "";
-
-      if (!state.memberName || state.memberName === "未登録") {
-        state.memberName = profile.displayName || state.memberName;
+      if (!initRes.ok) {
+        throw new Error(initRes.message || "初期化に失敗しました。");
       }
+
+      mergeIdentityFromResponse(initRes);
+
+      const extractedInitSummary = extractSummaryFromResponse(initRes);
+      state.summary = extractedInitSummary || { used:0, cap:0, remain:0 };
+
+      state.baseYm = String(initRes.baseYm || ymLocal());
+      state.currentYm = String(initRes.currentYm || initRes.monthData?.ym || state.baseYm || ymLocal());
+      state.maxYm = String(initRes.maxYm || shiftYm(state.baseYm, UI_MAX_MONTH_OFFSET));
 
       setMemberInfo();
-    }).catch(() => {});
+      renderSummary();
 
-  } catch (e) {
-    $("subtitle").textContent = "初期化失敗";
-    $("calendarGrid").innerHTML = `<div class="notice warn" style="grid-column:1/-1;">${(e.message || e).replace(/\n/g, "<br>")}</div>`;
-    $("statusBox").textContent = e.message || String(e);
-    $("calendarNotice").textContent = "GAS側のUI APIが未反映、または通信エラーです。";
-  } finally {
-    showLoading(false);
+      const initialView = String(getQueryParam("view") || "calendar");
+      if (initialView === "status") {
+        setView("status");
+      } else if (initialView === "help") {
+        setView("help");
+      } else {
+        setView("calendar");
+      }
+
+      let firstYm = state.currentYm;
+      if (Number(getQueryParam("offset") || "0") === 1) {
+        const nextYm = shiftYm(state.baseYm, 1);
+        if (nextYm && compareYm(nextYm, state.maxYm) <= 0) {
+          firstYm = nextYm;
+        }
+      }
+
+      state.currentYm = firstYm;
+
+      const initMonthYm = String(initRes.currentYm || initRes.monthData?.ym || initRes.monthData?.month || "");
+      const hasInitMonthData = !!(initRes.monthData && initMonthYm);
+
+      if (hasInitMonthData && firstYm === initMonthYm) {
+        state.monthData = normalizeMonthData(initRes);
+        setCachedMonth(firstYm, state.monthData, state.summary);
+        renderCalendar();
+        schedulePrefetchForwardMonths_(state.currentYm);
+      } else {
+        await loadMonth(firstYm);
+      }
+
+      if (initialView === "status") {
+        await ensureStatusLoaded(false);
+      } else {
+        $("statusBox").textContent = "申請状況は表示時に読み込みます。";
+      }
+
+      $("subtitle").textContent = "LINE連携済み";
+
+      profilePromise.then(profile => {
+        if (!profile) return;
+
+        state.profile = profile;
+        state.userId = state.userId || profile.userId || "";
+
+        if (!state.memberName || state.memberName === "未登録") {
+          state.memberName = profile.displayName || state.memberName;
+        }
+
+        setMemberInfo();
+      }).catch(() => {});
+
+    } catch (e) {
+      $("subtitle").textContent = "初期化失敗";
+      $("calendarGrid").innerHTML = `<div class="notice warn" style="grid-column:1/-1;">${(e.message || e).replace(/\n/g, "<br>")}</div>`;
+      $("statusBox").textContent = e.message || String(e);
+      $("calendarNotice").textContent = "GAS側のUI APIが未反映、または通信エラーです。";
+    } finally {
+      showLoading(false);
+    }
   }
-}
+
   $("btnClose").addEventListener("click", () => {
     try { liff.closeWindow(); }
     catch(e){ history.back(); }
