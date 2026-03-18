@@ -1805,75 +1805,30 @@
   }
 
   async function afterMutation(res, mutation){
-    closeActionSheet();
+  closeActionSheet();
 
-    const date = mutation?.date || state.selectedDay?.date || "";
-    const ym = state.currentYm || (date ? date.slice(0, 7) : "");
-    const baseDay = state.selectedDay ? cloneData(state.selectedDay) : findDayInMonthData(state.monthData, date);
+  const date = mutation?.date || state.selectedDay?.date || "";
+  const ym = state.currentYm || (date ? date.slice(0, 7) : "");
 
-    let serverDay = extractUpdatedDayFromResponse(res, date);
-    let optimisticDay = baseDay ? buildOptimisticDay(baseDay, mutation?.op, mutation?.kind) : null;
-    let nextDay = null;
-
-    if (optimisticDay && serverDay) {
-      nextDay = normalizeDayObject({
-        ...optimisticDay,
-        ...serverDay,
-        ownKind: serverDay.ownKind || optimisticDay.ownKind,
-        count: serverDay.count ?? optimisticDay.count,
-        limit: serverDay.limit ?? optimisticDay.limit,
-        badge: serverDay.badge ?? optimisticDay.badge,
-        disabledReason: serverDay.disabledReason ?? optimisticDay.disabledReason
-      }, date);
-    } else if (serverDay) {
-      nextDay = normalizeDayObject(serverDay, date);
-    } else if (optimisticDay) {
-      nextDay = normalizeDayObject(optimisticDay, date);
-    }
-
-    const extractedSummary = extractSummaryFromResponse(res);
-    const parsedSummary = res?.planText
-      ? parseSummaryFromPlanText(res.planText, ym || state.baseYm || ymLocal())
-      : null;
-
-    if (extractedSummary) {
-      state.summary = extractedSummary;
-      renderSummary();
-    } else if (parsedSummary) {
-      state.summary = parsedSummary;
-      renderSummary();
-    }
-
-    if (res?.planText) {
-      state.statusText = res.planText;
-      state.statusLoaded = true;
-      $("statusBox").textContent = res.planText;
-    } else if (state.statusLoaded) {
-      loadStatus().catch(() => {});
-    }
-
-    if (ym && nextDay) {
-      upsertDayInState(ym, nextDay);
-
-      const liveDay = getLiveDayByDate(date);
-      state.selectedDay = liveDay;
-
-      if (!state.monthCache[ym]) state.monthCache[ym] = {};
-      state.monthCache[ym].monthData = cloneData(state.monthData);
-      state.monthCache[ym].summary = cloneData(state.summary);
-
-      if (!updateRenderedDay(date, liveDay)) {
-        renderCalendar();
-      }
-    } else {
-      await loadMonth(state.currentYm, { force: true });
-      return;
-    }
-
-    if (ENABLE_BACKGROUND_DAY_SYNC && ym && date) {
-      syncSingleDayFromServer(ym, date);
-    }
+  if (res?.planText) {
+    state.statusText = res.planText;
+    state.statusLoaded = true;
+    $("statusBox").textContent = res.planText;
   }
+
+  // ここが安全策の本体
+  // 成功後は、表示中の月データをサーバーから再取得して
+  // summary と days を強制的に一致させる
+  await loadMonth(ym, { force: true });
+
+  if (state.statusLoaded) {
+    await loadStatus();
+  }
+
+  if (date) {
+    state.selectedDay = getLiveDayByDate(date);
+  }
+}
 
   async function guarded(fn){
     try {
