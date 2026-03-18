@@ -15,13 +15,9 @@
       --muted:#6b7280;
       --primary:#2563eb;
       --primary-soft:#eff6ff;
-      --success:#16a34a;
-      --success-soft:#f0fdf4;
       --danger:#dc2626;
-      --danger-soft:#fef2f2;
       --off:#2563eb;
       --late:#67e8f9;
-      --disabled:#f3f4f6;
       --shadow:0 8px 24px rgba(17,24,39,.08);
       --radius:18px;
     }
@@ -440,8 +436,6 @@
       color:#c2410c;
       border:1px solid #fed7aa;
     }
-
-    .hidden{ display:none !important; }
 
     .overlay{
       position:fixed;
@@ -974,7 +968,7 @@
       const summary = extractSummaryFromResponse(res) || null;
       setCachedMonth(ym, monthData, summary);
     } catch (e) {
-      // 先読み失敗は無視
+      // ignore
     } finally {
       delete state.prefetchingMonths[ym];
     }
@@ -986,7 +980,6 @@
     setTimeout(() => {
       const next1 = shiftYm(anchorYm, 1);
       const next2 = shiftYm(anchorYm, 2);
-
       prefetchMonthSilent_(next1);
       prefetchMonthSilent_(next2);
     }, 0);
@@ -1006,7 +999,7 @@
         loadStatus().catch(() => {});
       }
     } catch (e) {
-      // NG後の再同期失敗は無視
+      // ignore
     }
   }
 
@@ -1604,7 +1597,7 @@
         }
       }
     } catch (e) {
-      // バックグラウンド同期なので無視
+      // ignore
     }
   }
 
