@@ -767,13 +767,13 @@
   <div class="loading" id="loading"><div class="spinner"></div></div>
 
 <script>
-  const LIFF_ID = "2009200739-aFlG2Qqe";
-  const ENDPOINT = "https://attendance-relay.heaven1059-gd.workers.dev";
+  const UI_VERSION = "2026-03-19-01";
+  const LIFF_ID = <?= JSON.stringify(LIFF_ID) ?>;
+  const ENDPOINT = <?= JSON.stringify(ENDPOINT) ?>;
 
   const UI_MAX_MONTH_OFFSET = 2;
   const UI_RANGE_TEXT = `当月から${UI_MAX_MONTH_OFFSET}か月先まで操作できます`;
   const UI_ROLE_RANGE_TEXT = `UI対応: 当月〜${UI_MAX_MONTH_OFFSET}か月先`;
-  const ENABLE_BACKGROUND_DAY_SYNC = false;
 
   const $ = (id) => document.getElementById(id);
 
@@ -792,8 +792,7 @@
     memberRole: "",
     roleLabel: "",
     userId: "",
-    monthCache: {},
-    prefetchingMonths: {}
+    monthCache: {}
   };
 
   function showLoading(flag){
@@ -943,219 +942,6 @@
 
   function clearAllMonthCache(){
     state.monthCache = {};
-    state.prefetchingMonths = {};
-  }
-
-  function isYmInUiRange(ym){
-    if (!ym) return false;
-    if (compareYm(ym, state.baseYm) < 0) return false;
-    if (compareYm(ym, state.maxYm) > 0) return false;
-    return true;
-  }
-
-  async function prefetchMonthSilent_(ym){
-    if (!ym) return;
-    if (!isYmInUiRange(ym)) return;
-    if (state.monthCache[ym]?.monthData) return;
-    if (state.prefetchingMonths[ym]) return;
-
-    state.prefetchingMonths[ym] = true;
-    try {
-      const res = await apiCall("calendarMonth", { ym });
-      if (!res.ok) return;
-
-      const monthData = normalizeMonthData(res);
-      const summary = extractSummaryFromResponse(res) || null;
-      setCachedMonth(ym, monthData, summary);
-    } catch (e) {
-      // ignore
-    } finally {
-      delete state.prefetchingMonths[ym];
-    }
-  }
-
-  function schedulePrefetchForwardMonths_(anchorYm){
-    return;
-  }
-  
-  async function reloadMonthAfterMutationNg_(ym, date){
-    if (!ym) return;
-
-    try {
-      await loadMonth(ym, { force: true });
-
-      if (date) {
-        state.selectedDay = getLiveDayByDate(date);
-      }
-
-      if (state.statusLoaded) {
-        loadStatus().catch(() => {});
-      }
-    } catch (e) {
-      // ignore
-    }
-  }
-
-  function normalizeOwnKind(raw){
-    const s = String(raw || "").trim();
-    if (!s) return "";
-
-    if (["公休", "off", "OFF", "own_off", "休み"].includes(s)) return "公休";
-    if (["遅公", "late", "LATE", "own_late"].includes(s)) return "遅公";
-
-    return s === "公休" || s === "遅公" ? s : "";
-  }
-
-  function deriveOwnKind(day){
-    return normalizeOwnKind(
-      day?.ownKind ??
-      day?.myStatus ??
-      day?.requestType ??
-      day?.statusName ??
-      day?.mine ??
-      ""
-    );
-  }
-
-  function deriveState(day, ownKind, count, limit){
-    if (ownKind === "公休") return "own_off";
-    if (ownKind === "遅公") return "own_late";
-
-    const raw = String(day?.state || day?.status || "").trim();
-    if (["available", "full", "disabled"].includes(raw)) return raw;
-    if (raw === "own_off" || raw === "own_late") return raw;
-
-    if (Number.isFinite(count) && Number.isFinite(limit)) {
-      if (count >= limit) return "full";
-      return "available";
-    }
-
-    return "available";
-  }
-
-  function deriveActions(ownKind, stateName){
-    if (ownKind === "公休") {
-      return {
-        canApplyOff: false,
-        canApplyLate: false,
-        canChangeToOff: false,
-        canChangeToLate: true,
-        canCancel: true
-      };
-    }
-
-    if (ownKind === "遅公") {
-      return {
-        canApplyOff: false,
-        canApplyLate: false,
-        canChangeToOff: true,
-        canChangeToLate: false,
-        canCancel: true
-      };
-    }
-
-    if (stateName === "available") {
-      return {
-        canApplyOff: true,
-        canApplyLate: true,
-        canChangeToOff: false,
-        canChangeToLate: false,
-        canCancel: false
-      };
-    }
-
-    return {
-      canApplyOff: false,
-      canApplyLate: false,
-      canChangeToOff: false,
-      canChangeToLate: false,
-      canCancel: false
-    };
-  }
-
-  function normalizeDayObject(day, fallbackDate = ""){
-    const date = String(day?.date || fallbackDate || "");
-    const m = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    const dayNum = m ? Number(m[3]) : Number(day?.day || 0);
-
-    const count = day?.count === undefined || day?.count === null || day?.count === ""
-      ? null
-      : Number(day.count);
-
-    const limit = day?.limit === undefined || day?.limit === null || day?.limit === ""
-      ? null
-      : Number(day.limit);
-
-    const ownKind = deriveOwnKind(day);
-    const stateName = deriveState(day, ownKind, count, limit);
-
-    const serverActions = day?.actions && typeof day.actions === "object"
-      ? {
-          canApplyOff: !!day.actions.canApplyOff,
-          canApplyLate: !!day.actions.canApplyLate,
-          canChangeToOff: !!day.actions.canChangeToOff,
-          canChangeToLate: !!day.actions.canChangeToLate,
-          canCancel: !!day.actions.canCancel
-        }
-      : null;
-
-    const actions = serverActions || deriveActions(ownKind, stateName);
-
-    return {
-      ...day,
-      date,
-      day: day?.day ?? dayNum,
-      count,
-      limit,
-      ownKind,
-      state: stateName,
-      actions
-    };
-  }
-
-  function findDayInMonthData(monthData, date){
-    if (!monthData?.days || !Array.isArray(monthData.days)) return null;
-    return monthData.days.find(d => String(d?.date || "") === String(date)) || null;
-  }
-
-  function getLiveDayByDate(date){
-    const live = findDayInMonthData(state.monthData, date);
-    if (live) return normalizeDayObject(live, date);
-
-    return normalizeDayObject({
-      date,
-      state: "disabled",
-      badge: "",
-      ownKind: "",
-      disabledReason: "読込データなし"
-    }, date);
-  }
-
-  function replaceDayInMonthData(monthData, newDay){
-    if (!monthData?.days || !Array.isArray(monthData.days) || !newDay?.date) return;
-
-    const normalized = normalizeDayObject(newDay, newDay.date);
-    const idx = monthData.days.findIndex(d => String(d?.date || "") === String(normalized.date));
-
-    if (idx >= 0) {
-      monthData.days[idx] = normalized;
-    } else {
-      monthData.days.push(normalized);
-      monthData.days.sort((a, b) => String(a.date).localeCompare(String(b.date)));
-    }
-  }
-
-  function upsertDayInState(ym, day){
-    const normalized = normalizeDayObject(day, day?.date || "");
-    if (!normalized.date) return;
-
-    if (state.currentYm === ym && state.monthData) {
-      replaceDayInMonthData(state.monthData, normalized);
-    }
-
-    if (state.monthCache[ym]?.monthData) {
-      replaceDayInMonthData(state.monthCache[ym].monthData, normalized);
-    }
   }
 
   async function apiCall(action, payload = {}){
@@ -1293,68 +1079,6 @@
       : UI_ROLE_RANGE_TEXT;
   }
 
-  function getSummaryCap_(){
-  const cap1 = Number(state.summary?.cap ?? NaN);
-  if (!Number.isNaN(cap1) && cap1 > 0) return cap1;
-
-  const cap2 = Number(state.monthCache?.[state.currentYm]?.summary?.cap ?? NaN);
-  if (!Number.isNaN(cap2) && cap2 > 0) return cap2;
-
-  return 0;
-}
-
-function deriveSummaryFromMonthData_(monthData, fallbackCap = 0){
-  const days = Array.isArray(monthData?.days) ? monthData.days : [];
-
-  let used = 0;
-  for (const d of days) {
-    const ownKind = String(d?.ownKind || "").trim();
-    if (ownKind === "公休") used += 2;
-    else if (ownKind === "遅公") used += 1;
-  }
-
-  const cap = Math.max(0, Number(fallbackCap || 0));
-  const remain = Math.max(0, cap - used);
-
-  return { used, cap, remain };
-}
-
-function getDisplaySummary_(){
-  const cap = getSummaryCap_();
-
-  // 表示中の月データがあるなら、それを正本にする
-  if (state.monthData?.ym === state.currentYm && Array.isArray(state.monthData?.days)) {
-    return deriveSummaryFromMonthData_(state.monthData, cap);
-  }
-
-  // フォールバック
-  return {
-    used: Number(state.summary?.used ?? 0),
-    cap: Number(state.summary?.cap ?? 0),
-    remain: Number(state.summary?.remain ?? Math.max(0, Number(state.summary?.cap ?? 0) - Number(state.summary?.used ?? 0)))
-  };
-}
-
-  function renderSummary(){
-  const s = getDisplaySummary_();
-
-  $("usedValue").textContent = `${Number(s.used || 0)}P`;
-  $("capValue").textContent = s.cap ? `${Number(s.cap || 0)}P` : "-";
-  $("remainValue").textContent = s.cap ? `${Number(s.remain || 0)}P` : "-";
-
-  // state.summary も見た目に合わせて同期しておく
-  state.summary = {
-    used: Number(s.used || 0),
-    cap: Number(s.cap || 0),
-    remain: Number(s.remain || 0)
-  };
-
-  if (state.currentYm) {
-    if (!state.monthCache[state.currentYm]) state.monthCache[state.currentYm] = {};
-    state.monthCache[state.currentYm].summary = cloneData(state.summary);
-  }
-}
-
   function normalizeSummary(raw){
     if (!raw) return null;
 
@@ -1379,6 +1103,136 @@ function getDisplaySummary_(){
     return normalizeSummary(raw?.summary || raw?.monthSummary || raw);
   }
 
+  function renderSummary(){
+    const s = state.summary || { used: 0, cap: 0, remain: 0 };
+
+    $("usedValue").textContent = `${Number(s.used || 0)}P`;
+    $("capValue").textContent = s.cap ? `${Number(s.cap || 0)}P` : "-";
+    $("remainValue").textContent = s.cap ? `${Number(s.remain || 0)}P` : "-";
+
+    if (state.currentYm) {
+      if (!state.monthCache[state.currentYm]) state.monthCache[state.currentYm] = {};
+      state.monthCache[state.currentYm].summary = cloneData(s);
+    }
+  }
+
+  function normalizeOwnKind(raw){
+    const s = String(raw || "").trim();
+    if (!s) return "";
+
+    if (["公休", "off", "OFF", "own_off", "休み"].includes(s)) return "公休";
+    if (["遅公", "late", "LATE", "own_late"].includes(s)) return "遅公";
+
+    return s === "公休" || s === "遅公" ? s : "";
+  }
+
+  function deriveOwnKind(day){
+    return normalizeOwnKind(
+      day?.ownKind ??
+      day?.myStatus ??
+      day?.requestType ??
+      day?.statusName ??
+      day?.mine ??
+      ""
+    );
+  }
+
+  function deriveState(day, ownKind, count, limit){
+    if (ownKind === "公休") return "own_off";
+    if (ownKind === "遅公") return "own_late";
+
+    const raw = String(day?.state || day?.status || "").trim();
+    if (["available", "full", "disabled", "own_off", "own_late"].includes(raw)) return raw;
+
+    if (Number.isFinite(count) && Number.isFinite(limit)) {
+      if (count >= limit) return "full";
+      return "available";
+    }
+
+    return "available";
+  }
+
+  function deriveActions(ownKind, stateName){
+    if (ownKind === "公休") {
+      return {
+        canApplyOff: false,
+        canApplyLate: false,
+        canChangeToOff: false,
+        canChangeToLate: true,
+        canCancel: true
+      };
+    }
+
+    if (ownKind === "遅公") {
+      return {
+        canApplyOff: false,
+        canApplyLate: false,
+        canChangeToOff: true,
+        canChangeToLate: false,
+        canCancel: true
+      };
+    }
+
+    if (stateName === "available") {
+      return {
+        canApplyOff: true,
+        canApplyLate: true,
+        canChangeToOff: false,
+        canChangeToLate: false,
+        canCancel: false
+      };
+    }
+
+    return {
+      canApplyOff: false,
+      canApplyLate: false,
+      canChangeToOff: false,
+      canChangeToLate: false,
+      canCancel: false
+    };
+  }
+
+  function normalizeDayObject(day, fallbackDate = ""){
+    const date = String(day?.date || fallbackDate || "");
+    const m = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const dayNum = m ? Number(m[3]) : Number(day?.day || 0);
+
+    const count = day?.count === undefined || day?.count === null || day?.count === ""
+      ? null
+      : Number(day.count);
+
+    const limit = day?.limit === undefined || day?.limit === null || day?.limit === ""
+      ? null
+      : Number(day.limit);
+
+    const ownKind = deriveOwnKind(day);
+    const stateName = deriveState(day, ownKind, count, limit);
+    const derived = deriveActions(ownKind, stateName);
+
+    const serverActions = day?.actions && typeof day.actions === "object"
+      ? {
+          canApplyOff: !!day.actions.canApplyOff,
+          canApplyLate: !!day.actions.canApplyLate,
+          canChangeToOff: !!day.actions.canChangeToOff,
+          canChangeToLate: !!day.actions.canChangeToLate,
+          canCancel: !!day.actions.canCancel
+        }
+      : null;
+
+    const actions = serverActions ? { ...derived, ...serverActions } : derived;
+
+    return {
+      ...day,
+      date,
+      day: day?.day ?? dayNum,
+      count,
+      limit,
+      ownKind,
+      state: stateName,
+      actions
+    };
+  }
+
   function normalizeMonthData(raw){
     const src = raw?.monthData || raw || {};
     const ym = String(src.ym || src.month || state.currentYm || "");
@@ -1394,47 +1248,49 @@ function getDisplaySummary_(){
     };
   }
 
-  function parseSummaryFromPlanText(text, targetYm){
-    if (!text || !targetYm) return null;
+  function findDayInMonthData(monthData, date){
+    if (!monthData?.days || !Array.isArray(monthData.days)) return null;
+    return monthData.days.find(d => String(d?.date || "") === String(date)) || null;
+  }
 
-    const p = parseYm(targetYm);
-    if (!p) return null;
+  function getLiveDayByDate(date){
+    const live = findDayInMonthData(state.monthData, date);
+    if (live) return normalizeDayObject(live, date);
 
-    const ymSlash = `${p.y}/${pad2(p.m)}`;
-    const lines = String(text)
-      .split(/\r?\n/)
-      .map(s => s.trim())
-      .filter(Boolean);
+    return normalizeDayObject({
+      date,
+      state: "disabled",
+      badge: "",
+      ownKind: "",
+      disabledReason: "読込データなし"
+    }, date);
+  }
 
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].includes(ymSlash) && /使用予定/.test(lines[i])) {
-        const next = lines[i + 1] || "";
-        const m = next.match(/(\d+)\s*P\s*\/\s*(\d+)\s*P.*?残\s*(\d+)\s*P/i);
-        if (m) {
-          return {
-            used: Number(m[1] || 0),
-            cap: Number(m[2] || 0),
-            remain: Number(m[3] || 0)
-          };
-        }
-      }
+  function replaceDayInMonthData(monthData, newDay){
+    if (!monthData?.days || !Array.isArray(monthData.days) || !newDay?.date) return;
+
+    const normalized = normalizeDayObject(newDay, newDay.date);
+    const idx = monthData.days.findIndex(d => String(d?.date || "") === String(normalized.date));
+
+    if (idx >= 0) {
+      monthData.days[idx] = normalized;
+    } else {
+      monthData.days.push(normalized);
+      monthData.days.sort((a, b) => String(a.date).localeCompare(String(b.date)));
+    }
+  }
+
+  function upsertDayInState(ym, day){
+    const normalized = normalizeDayObject(day, day?.date || "");
+    if (!normalized.date) return;
+
+    if (state.currentYm === ym && state.monthData) {
+      replaceDayInMonthData(state.monthData, normalized);
     }
 
-    const text2 = String(text).replace(/\r/g, "");
-    const blockRegex = new RegExp(
-      `${ymSlash}\\s*使用予定[\\s\\S]{0,80}?(\\d+)\\s*P\\s*\\/\\s*(\\d+)\\s*P[\\s\\S]{0,20}?残\\s*(\\d+)\\s*P`,
-      "i"
-    );
-    const m2 = text2.match(blockRegex);
-    if (m2) {
-      return {
-        used: Number(m2[1] || 0),
-        cap: Number(m2[2] || 0),
-        remain: Number(m2[3] || 0)
-      };
+    if (state.monthCache[ym]?.monthData) {
+      replaceDayInMonthData(state.monthCache[ym].monthData, normalized);
     }
-
-    return null;
   }
 
   function getCellClass(day){
@@ -1472,6 +1328,14 @@ function getDisplaySummary_(){
     const btn = document.querySelector(`.day[data-date="${date}"]`);
     if (!btn) return false;
     renderDayButton(btn, normalizeDayObject(day, date));
+    return true;
+  }
+
+  function canMoveMonth(delta){
+    const nextYm = shiftYm(state.currentYm, delta);
+    if (!nextYm) return false;
+    if (compareYm(nextYm, state.baseYm) < 0) return false;
+    if (compareYm(nextYm, state.maxYm) > 0) return false;
     return true;
   }
 
@@ -1525,8 +1389,8 @@ function getDisplaySummary_(){
       btn.addEventListener("click", () => {
         const liveDay = getLiveDayByDate(date);
         state.selectedDay = liveDay;
+        renderCalendar();
         openActionSheet(liveDay);
-        updateRenderedDay(date, liveDay);
       });
 
       wrap.appendChild(btn);
@@ -1543,19 +1407,86 @@ function getDisplaySummary_(){
     $("btnPrevMonth").disabled = !canMoveMonth(-1);
     $("btnNextMonth").disabled = !canMoveMonth(1);
 
-    if (data.note) {
-      $("calendarNotice").textContent = data.note;
-    } else {
-      $("calendarNotice").textContent = "日付をタップすると、その日の申請・変更・取消ができます。";
-    }
+    $("calendarNotice").textContent = data.note
+      ? data.note
+      : "日付をタップすると、その日の申請・変更・取消ができます。";
   }
 
-  function canMoveMonth(delta){
-    const nextYm = shiftYm(state.currentYm, delta);
-    if (!nextYm) return false;
-    if (compareYm(nextYm, state.baseYm) < 0) return false;
-    if (compareYm(nextYm, state.maxYm) > 0) return false;
-    return true;
+  function openActionSheet(day){
+    const ownKind = String(day.ownKind || "");
+    const badge = String(day.badge || "").trim();
+    const disabledReason = String(day.disabledReason || "").trim();
+
+    const isLateOnlyPolicy =
+      !ownKind &&
+      (badge === "遅公のみ" || /遅公のみ/.test(disabledReason));
+
+    const isOffOnlyPolicy =
+      !ownKind &&
+      (badge === "公休のみ" || /公休のみ/.test(disabledReason));
+
+    const derivedActions = deriveActions(ownKind, String(day.state || ""));
+    let actions = {
+      ...derivedActions,
+      canApplyOff: !!day?.actions?.canApplyOff,
+      canApplyLate: !!day?.actions?.canApplyLate,
+      canChangeToOff: !!day?.actions?.canChangeToOff,
+      canChangeToLate: !!day?.actions?.canChangeToLate,
+      canCancel: !!day?.actions?.canCancel
+    };
+
+    if (!day?.actions || typeof day.actions !== "object") {
+      actions = derivedActions;
+    }
+
+    if (!ownKind && !actions.canApplyOff && !actions.canApplyLate) {
+      if (isLateOnlyPolicy) {
+        actions.canApplyLate = true;
+        actions.canApplyOff = false;
+      } else if (isOffOnlyPolicy) {
+        actions.canApplyOff = true;
+        actions.canApplyLate = false;
+      }
+    }
+
+    const descLines = [];
+
+    if (ownKind) {
+      descLines.push(`現在の申請：${ownKind}`);
+    } else if (day.state === "full") {
+      descLines.push("現在：満枠");
+    } else if (isLateOnlyPolicy) {
+      descLines.push("現在：遅公のみ申請可能");
+    } else if (isOffOnlyPolicy) {
+      descLines.push("現在：公休のみ申請可能");
+    } else if (day.state === "disabled") {
+      descLines.push("現在：申請制限あり");
+    } else {
+      descLines.push("現在：申請可能");
+    }
+
+    if (disabledReason) {
+      descLines.push(disabledReason);
+    }
+
+    $("sheetDateLabel").textContent = formatDateJa(day.date);
+    $("sheetDesc").textContent = descLines.join("\n");
+
+    $("btnApplyOff").disabled = !actions.canApplyOff;
+    $("btnApplyLate").disabled = !actions.canApplyLate;
+    $("btnChangeOff").disabled = !actions.canChangeToOff;
+    $("btnChangeLate").disabled = !actions.canChangeToLate;
+    $("btnCancelRequest").disabled = !actions.canCancel;
+
+    $("actionSheet").classList.add("show");
+    $("sheetOverlay").classList.add("show");
+    $("actionSheet").setAttribute("aria-hidden", "false");
+  }
+
+  function closeActionSheet(){
+    $("actionSheet").classList.remove("show");
+    $("sheetOverlay").classList.remove("show");
+    $("actionSheet").setAttribute("aria-hidden", "true");
   }
 
   function extractUpdatedDayFromResponse(res, date){
@@ -1610,36 +1541,23 @@ function getDisplaySummary_(){
 
     day.badge = "";
     day.disabledReason = "";
+    delete day.actions;
 
     return normalizeDayObject(day, day.date);
   }
 
-  async function syncSingleDayFromServer(ym, date){
+  async function reloadMonthAfterMutationFallback_(ym, date){
+    if (!ym) return;
+
     try {
-      const res = await apiCall("calendarMonth", { ym });
-      if (!res.ok) return;
+      await loadMonth(ym, { force: true });
 
-      mergeIdentityFromResponse(res);
-
-      const freshMonthData = normalizeMonthData(res);
-      const freshSummary = extractSummaryFromResponse(res) || state.summary;
-
-      setCachedMonth(ym, freshMonthData, freshSummary);
-
-      if (state.currentYm !== ym) return;
-
-      state.monthData = freshMonthData;
-      if (freshSummary) {
-        state.summary = freshSummary;
-        renderSummary();
+      if (date) {
+        state.selectedDay = getLiveDayByDate(date);
       }
 
-      const updatedDay = findDayInMonthData(freshMonthData, date);
-      if (updatedDay) {
-        upsertDayInState(ym, updatedDay);
-        if (!updateRenderedDay(date, updatedDay)) {
-          renderCalendar();
-        }
+      if (state.statusLoaded && state.currentView === "status") {
+        loadStatus().catch(() => {});
       }
     } catch (e) {
       // ignore
@@ -1654,13 +1572,11 @@ function getDisplaySummary_(){
       if (cached?.monthData) {
         state.currentYm = ym;
         state.monthData = cached.monthData;
-        if (cached.summary) {
-          state.summary = cached.summary;
-        }
+        state.summary = cached.summary ? cloneData(cached.summary) : { used: 0, cap: 0, remain: 0 };
+
         setMemberInfo();
         renderSummary();
         renderCalendar();
-        schedulePrefetchForwardMonths_(state.currentYm);
         return;
       }
     }
@@ -1674,20 +1590,13 @@ function getDisplaySummary_(){
 
     state.currentYm = String(res.ym || res.monthData?.ym || ym || state.currentYm);
     state.monthData = normalizeMonthData(res);
-
-    const extracted = extractSummaryFromResponse(res);
-    if (extracted) {
-      state.summary = extracted;
-    } else if (!state.summary) {
-      state.summary = { used:0, cap:0, remain:0 };
-    }
+    state.summary = extractSummaryFromResponse(res) || { used: 0, cap: 0, remain: 0 };
 
     setCachedMonth(state.currentYm, state.monthData, state.summary);
 
     setMemberInfo();
     renderSummary();
     renderCalendar();
-    schedulePrefetchForwardMonths_(state.currentYm);
   }
 
   async function loadStatus(){
@@ -1703,22 +1612,19 @@ function getDisplaySummary_(){
       state.statusLoaded = true;
       $("statusBox").textContent = state.statusText;
 
-      const extracted = extractSummaryFromResponse(res);
-      const parsedSummary = parseSummaryFromPlanText(state.statusText, state.baseYm || ymLocal());
+      const explicitSummary = extractSummaryFromResponse(res);
+      if (explicitSummary) {
+        state.summary = explicitSummary;
 
-      if (extracted) {
-        state.summary = extracted;
-      } else if (parsedSummary) {
-        state.summary = parsedSummary;
-      }
+        if (state.currentYm) {
+          if (!state.monthCache[state.currentYm]) state.monthCache[state.currentYm] = {};
+          state.monthCache[state.currentYm].summary = cloneData(state.summary);
+        }
 
-      if (state.currentYm && state.monthCache[state.currentYm]) {
-        state.monthCache[state.currentYm].summary = cloneData(state.summary);
+        renderSummary();
       }
 
       setMemberInfo();
-      renderSummary();
-
     } catch (e) {
       state.statusLoaded = false;
       $("statusBox").textContent = `読込失敗\n${e.message || e}`;
@@ -1730,77 +1636,6 @@ function getDisplaySummary_(){
     await loadStatus();
   }
 
-  function openActionSheet(day){
-    const ownKind = String(day.ownKind || "");
-    const badge = String(day.badge || "").trim();
-    const disabledReason = String(day.disabledReason || "").trim();
-
-    const isLateOnlyPolicy =
-      !ownKind &&
-      (badge === "遅公のみ" || /遅公のみ/.test(disabledReason));
-
-    const isOffOnlyPolicy =
-      !ownKind &&
-      (badge === "公休のみ" || /公休のみ/.test(disabledReason));
-
-    let actions = {
-      canApplyOff: !!day?.actions?.canApplyOff,
-      canApplyLate: !!day?.actions?.canApplyLate,
-      canChangeToOff: !!day?.actions?.canChangeToOff,
-      canChangeToLate: !!day?.actions?.canChangeToLate,
-      canCancel: !!day?.actions?.canCancel
-    };
-
-    if (!ownKind && !actions.canApplyOff && !actions.canApplyLate) {
-      if (isLateOnlyPolicy) {
-        actions.canApplyLate = true;
-        actions.canApplyOff = false;
-      } else if (isOffOnlyPolicy) {
-        actions.canApplyOff = true;
-        actions.canApplyLate = false;
-      }
-    }
-
-    const descLines = [];
-
-    if (ownKind) {
-      descLines.push(`現在の申請：${ownKind}`);
-    } else if (day.state === "full") {
-      descLines.push("現在：満枠");
-    } else if (isLateOnlyPolicy) {
-      descLines.push("現在：遅公のみ申請可能");
-    } else if (isOffOnlyPolicy) {
-      descLines.push("現在：公休のみ申請可能");
-    } else if (day.state === "disabled") {
-      descLines.push("現在：申請制限あり");
-    } else {
-      descLines.push("現在：申請可能");
-    }
-
-    if (disabledReason) {
-      descLines.push(disabledReason);
-    }
-
-    $("sheetDateLabel").textContent = formatDateJa(day.date);
-    $("sheetDesc").textContent = descLines.join("\n");
-
-    $("btnApplyOff").disabled = !actions.canApplyOff;
-    $("btnApplyLate").disabled = !actions.canApplyLate;
-    $("btnChangeOff").disabled = !actions.canChangeToOff;
-    $("btnChangeLate").disabled = !actions.canChangeToLate;
-    $("btnCancelRequest").disabled = !actions.canCancel;
-
-    $("actionSheet").classList.add("show");
-    $("sheetOverlay").classList.add("show");
-    $("actionSheet").setAttribute("aria-hidden", "false");
-  }
-
-  function closeActionSheet(){
-    $("actionSheet").classList.remove("show");
-    $("sheetOverlay").classList.remove("show");
-    $("actionSheet").setAttribute("aria-hidden", "true");
-  }
-
   async function postApply(kind){
     if (!state.selectedDay?.date) return;
 
@@ -1809,7 +1644,7 @@ function getDisplaySummary_(){
 
     const res = await apiCall("apply", { kind, date: targetDate, memo: "" });
     if (!res.ok) {
-      await reloadMonthAfterMutationNg_(targetYm, targetDate);
+      await reloadMonthAfterMutationFallback_(targetYm, targetDate);
       throw new Error(res.message || "申請に失敗しました。");
     }
 
@@ -1825,7 +1660,7 @@ function getDisplaySummary_(){
 
     const res = await apiCall("change", { kind, date: targetDate });
     if (!res.ok) {
-      await reloadMonthAfterMutationNg_(targetYm, targetDate);
+      await reloadMonthAfterMutationFallback_(targetYm, targetDate);
       throw new Error(res.message || "変更に失敗しました。");
     }
 
@@ -1841,7 +1676,7 @@ function getDisplaySummary_(){
 
     const res = await apiCall("cancel", { date: targetDate });
     if (!res.ok) {
-      await reloadMonthAfterMutationNg_(targetYm, targetDate);
+      await reloadMonthAfterMutationFallback_(targetYm, targetDate);
       throw new Error(res.message || "取消に失敗しました。");
     }
 
@@ -1857,7 +1692,7 @@ function getDisplaySummary_(){
     const baseDay = state.selectedDay ? cloneData(state.selectedDay) : findDayInMonthData(state.monthData, date);
 
     let serverDay = extractUpdatedDayFromResponse(res, date);
-    let optimisticDay = baseDay ? buildOptimisticDay(baseDay, mutation?.op, mutation?.kind) : null;
+    const optimisticDay = baseDay ? buildOptimisticDay(baseDay, mutation?.op, mutation?.kind) : null;
     let nextDay = null;
 
     if (optimisticDay && serverDay) {
@@ -1868,12 +1703,20 @@ function getDisplaySummary_(){
         count: serverDay.count ?? optimisticDay.count,
         limit: serverDay.limit ?? optimisticDay.limit,
         badge: serverDay.badge ?? optimisticDay.badge,
-        disabledReason: serverDay.disabledReason ?? optimisticDay.disabledReason
+        disabledReason: serverDay.disabledReason ?? optimisticDay.disabledReason,
+        actions: serverDay.actions || optimisticDay.actions
       }, date);
     } else if (serverDay) {
       nextDay = normalizeDayObject(serverDay, date);
     } else if (optimisticDay) {
       nextDay = normalizeDayObject(optimisticDay, date);
+    }
+
+    const serverSummary = extractSummaryFromResponse(res);
+    if (serverSummary && ym) {
+      state.summary = serverSummary;
+      if (!state.monthCache[ym]) state.monthCache[ym] = {};
+      state.monthCache[ym].summary = cloneData(serverSummary);
     }
 
     if (res?.planText) {
@@ -1884,30 +1727,25 @@ function getDisplaySummary_(){
 
     if (ym && nextDay) {
       upsertDayInState(ym, nextDay);
-
-      const liveDay = getLiveDayByDate(date);
-      state.selectedDay = liveDay;
+      state.selectedDay = getLiveDayByDate(date);
 
       if (!state.monthCache[ym]) state.monthCache[ym] = {};
       state.monthCache[ym].monthData = cloneData(state.monthData);
 
       renderSummary();
-
-      if (!updateRenderedDay(date, liveDay)) {
-        renderCalendar();
-      }
-    } else {
-      await loadMonth(state.currentYm, { force: true });
-      renderSummary();
+      renderCalendar();
       return;
     }
 
-    if (state.currentView === "status") {
-      loadStatus().catch(() => {});
+    await loadMonth(state.currentYm, { force: true });
+    renderSummary();
+
+    if (date) {
+      state.selectedDay = getLiveDayByDate(date);
     }
 
-    if (ENABLE_BACKGROUND_DAY_SYNC && ym && date) {
-      syncSingleDayFromServer(ym, date);
+    if (state.currentView === "status" && state.statusLoaded) {
+      loadStatus().catch(() => {});
     }
   }
 
@@ -1924,11 +1762,11 @@ function getDisplaySummary_(){
 
   async function initialize(){
     showLoading(true);
-    $("subtitle").textContent = "LIFF初期化中…";
+    $("subtitle").textContent = `LIFF初期化中… / UI ${UI_VERSION}`;
 
     try {
       await liff.init({ liffId: LIFF_ID });
-      $("subtitle").textContent = "LINEログイン確認中…";
+      $("subtitle").textContent = `LINEログイン確認中… / UI ${UI_VERSION}`;
 
       if (!liff.isLoggedIn()) {
         liff.login({ redirectUri: location.href });
@@ -1942,7 +1780,7 @@ function getDisplaySummary_(){
 
       const profilePromise = liff.getProfile().catch(() => null);
 
-      $("subtitle").textContent = "初期データ取得中…";
+      $("subtitle").textContent = `初期データ取得中… / UI ${UI_VERSION}`;
 
       const initRes = await apiCall("calendarInit", {
         ym: "",
@@ -1956,9 +1794,7 @@ function getDisplaySummary_(){
 
       mergeIdentityFromResponse(initRes);
 
-      const extractedInitSummary = extractSummaryFromResponse(initRes);
-      state.summary = extractedInitSummary || { used:0, cap:0, remain:0 };
-
+      state.summary = extractSummaryFromResponse(initRes) || { used:0, cap:0, remain:0 };
       state.baseYm = String(initRes.baseYm || ymLocal());
       state.currentYm = String(initRes.currentYm || initRes.monthData?.ym || state.baseYm || ymLocal());
       state.maxYm = String(initRes.maxYm || shiftYm(state.baseYm, UI_MAX_MONTH_OFFSET));
@@ -1982,7 +1818,6 @@ function getDisplaySummary_(){
           firstYm = nextYm;
         }
       }
-
       state.currentYm = firstYm;
 
       const initMonthYm = String(initRes.currentYm || initRes.monthData?.ym || initRes.monthData?.month || "");
@@ -1993,7 +1828,6 @@ function getDisplaySummary_(){
         setCachedMonth(firstYm, state.monthData, state.summary);
         renderSummary();
         renderCalendar();
-        schedulePrefetchForwardMonths_(state.currentYm);
       } else {
         await loadMonth(firstYm);
       }
@@ -2004,7 +1838,7 @@ function getDisplaySummary_(){
         $("statusBox").textContent = "申請状況は表示時に読み込みます。";
       }
 
-      $("subtitle").textContent = "LINE連携済み";
+      $("subtitle").textContent = `LINE連携済み / UI ${UI_VERSION}`;
 
       profilePromise.then(profile => {
         if (!profile) return;
@@ -2020,7 +1854,7 @@ function getDisplaySummary_(){
       }).catch(() => {});
 
     } catch (e) {
-      $("subtitle").textContent = "初期化失敗";
+      $("subtitle").textContent = `初期化失敗 / UI ${UI_VERSION}`;
       $("calendarGrid").innerHTML = `<div class="notice warn" style="grid-column:1/-1;">${(e.message || e).replace(/\n/g, "<br>")}</div>`;
       $("statusBox").textContent = e.message || String(e);
       $("calendarNotice").textContent = "GAS側のUI APIが未反映、または通信エラーです。";
@@ -2037,7 +1871,7 @@ function getDisplaySummary_(){
   $("btnRefresh").addEventListener("click", () => guarded(async () => {
     clearAllMonthCache();
     await loadMonth(state.currentYm, { force: true });
-    if (state.statusLoaded) {
+    if (state.statusLoaded && state.currentView === "status") {
       await loadStatus();
     }
     showToast("更新しました");
