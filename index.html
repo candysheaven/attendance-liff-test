@@ -1047,7 +1047,7 @@
     return "available";
   }
 
-  function deriveActions(ownKind, state){
+  function deriveActions(ownKind, stateName){
     if (ownKind === "公休") {
       return {
         canApplyOff: false,
@@ -1068,7 +1068,7 @@
       };
     }
 
-    if (state === "available") {
+    if (stateName === "available") {
       return {
         canApplyOff: true,
         canApplyLate: true,
