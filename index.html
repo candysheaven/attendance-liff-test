@@ -1426,17 +1426,19 @@
       (badge === "公休のみ" || /公休のみ/.test(disabledReason));
 
     const derivedActions = deriveActions(ownKind, String(day.state || ""));
-    let actions = {
-      ...derivedActions,
-      canApplyOff: !!day?.actions?.canApplyOff,
-      canApplyLate: !!day?.actions?.canApplyLate,
-      canChangeToOff: !!day?.actions?.canChangeToOff,
-      canChangeToLate: !!day?.actions?.canChangeToLate,
-      canCancel: !!day?.actions?.canCancel
-    };
+    let actions = derivedActions;
 
-    if (!day?.actions || typeof day.actions !== "object") {
-      actions = derivedActions;
+    // 申請済み日は、見た目の状態を優先して変更/取消を有効化する
+    // （最終的な可否はサーバー側でも検証されるので安全）
+    if (!ownKind && day?.actions && typeof day.actions === "object") {
+      actions = {
+        ...derivedActions,
+        canApplyOff: !!day.actions.canApplyOff,
+        canApplyLate: !!day.actions.canApplyLate,
+        canChangeToOff: !!day.actions.canChangeToOff,
+        canChangeToLate: !!day.actions.canChangeToLate,
+        canCancel: !!day.actions.canCancel
+      };
     }
 
     if (!ownKind && !actions.canApplyOff && !actions.canApplyLate) {
