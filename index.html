@@ -1413,77 +1413,81 @@
   }
 
   function openActionSheet(day){
-    const ownKind = String(day.ownKind || "");
-    const badge = String(day.badge || "").trim();
-    const disabledReason = String(day.disabledReason || "").trim();
+  const ownKind = String(day?.ownKind || "");
+  const badge = String(day?.badge || "").trim();
+  const disabledReason = String(day?.disabledReason || "").trim();
 
-    const isLateOnlyPolicy =
-      !ownKind &&
-      (badge === "遅公のみ" || /遅公のみ/.test(disabledReason));
+  const isLateOnlyPolicy =
+    !ownKind &&
+    (badge === "遅公のみ" || /遅公のみ/.test(disabledReason));
 
-    const isOffOnlyPolicy =
-      !ownKind &&
-      (badge === "公休のみ" || /公休のみ/.test(disabledReason));
+  const isOffOnlyPolicy =
+    !ownKind &&
+    (badge === "公休のみ" || /公休のみ/.test(disabledReason));
 
-    const derivedActions = deriveActions(ownKind, String(day.state || ""));
-    let actions = derivedActions;
+  const derivedActions = deriveActions(ownKind, String(day?.state || ""));
+  const hasServerActions = !!(day?.actions && typeof day.actions === "object");
 
-    // 申請済み日は、見た目の状態を優先して変更/取消を有効化する
-    // （最終的な可否はサーバー側でも検証されるので安全）
-    if (!ownKind && day?.actions && typeof day.actions === "object") {
-      actions = {
-        ...derivedActions,
+  let actions = hasServerActions
+    ? {
         canApplyOff: !!day.actions.canApplyOff,
         canApplyLate: !!day.actions.canApplyLate,
         canChangeToOff: !!day.actions.canChangeToOff,
         canChangeToLate: !!day.actions.canChangeToLate,
         canCancel: !!day.actions.canCancel
-      };
-    }
-
-    if (!ownKind && !actions.canApplyOff && !actions.canApplyLate) {
-      if (isLateOnlyPolicy) {
-        actions.canApplyLate = true;
-        actions.canApplyOff = false;
-      } else if (isOffOnlyPolicy) {
-        actions.canApplyOff = true;
-        actions.canApplyLate = false;
       }
-    }
+    : derivedActions;
 
-    const descLines = [];
-
-    if (ownKind) {
-      descLines.push(`現在の申請：${ownKind}`);
-    } else if (day.state === "full") {
-      descLines.push("現在：満枠");
-    } else if (isLateOnlyPolicy) {
-      descLines.push("現在：遅公のみ申請可能");
+  if (!ownKind && !hasServerActions && !actions.canApplyOff && !actions.canApplyLate) {
+    if (isLateOnlyPolicy) {
+      actions.canApplyLate = true;
+      actions.canApplyOff = false;
     } else if (isOffOnlyPolicy) {
-      descLines.push("現在：公休のみ申請可能");
-    } else if (day.state === "disabled") {
-      descLines.push("現在：申請制限あり");
-    } else {
-      descLines.push("現在：申請可能");
+      actions.canApplyOff = true;
+      actions.canApplyLate = false;
     }
-
-    if (disabledReason) {
-      descLines.push(disabledReason);
-    }
-
-    $("sheetDateLabel").textContent = formatDateJa(day.date);
-    $("sheetDesc").textContent = descLines.join("\n");
-
-    $("btnApplyOff").disabled = !actions.canApplyOff;
-    $("btnApplyLate").disabled = !actions.canApplyLate;
-    $("btnChangeOff").disabled = !actions.canChangeToOff;
-    $("btnChangeLate").disabled = !actions.canChangeToLate;
-    $("btnCancelRequest").disabled = !actions.canCancel;
-
-    $("actionSheet").classList.add("show");
-    $("sheetOverlay").classList.add("show");
-    $("actionSheet").setAttribute("aria-hidden", "false");
   }
+
+  const descLines = [];
+
+  if (ownKind) {
+    descLines.push(`現在の申請：${ownKind}`);
+  } else if (day.state === "full") {
+    descLines.push("現在：満枠");
+  } else if (isLateOnlyPolicy) {
+    descLines.push("現在：遅公のみ申請可能");
+  } else if (isOffOnlyPolicy) {
+    descLines.push("現在：公休のみ申請可能");
+  } else if (day.state === "disabled") {
+    descLines.push("現在：申請制限あり");
+  } else {
+    descLines.push("現在：申請可能");
+  }
+
+  if (disabledReason) {
+    descLines.push(disabledReason);
+  } else if (
+    ownKind &&
+    !actions.canChangeToOff &&
+    !actions.canChangeToLate &&
+    !actions.canCancel
+  ) {
+    descLines.push("変更・取消はできません");
+  }
+
+  $("sheetDateLabel").textContent = formatDateJa(day.date);
+  $("sheetDesc").textContent = descLines.join("\n");
+
+  $("btnApplyOff").disabled = !actions.canApplyOff;
+  $("btnApplyLate").disabled = !actions.canApplyLate;
+  $("btnChangeOff").disabled = !actions.canChangeToOff;
+  $("btnChangeLate").disabled = !actions.canChangeToLate;
+  $("btnCancelRequest").disabled = !actions.canCancel;
+
+  $("actionSheet").classList.add("show");
+  $("sheetOverlay").classList.add("show");
+  $("actionSheet").setAttribute("aria-hidden", "false");
+}
 
   function closeActionSheet(){
     $("actionSheet").classList.remove("show");
