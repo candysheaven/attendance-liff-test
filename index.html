@@ -767,7 +767,7 @@
   <div class="loading" id="loading"><div class="spinner"></div></div>
 
 <script>
-  const UI_VERSION = "2026-03-19-01b";
+  const UI_VERSION = "2026-03-27-01";
   const LIFF_ID = "2009229315-1mExjcwZ";
   const ENDPOINT = "https://attendance-relay.heaven1059-gd.workers.dev";
 
@@ -792,7 +792,8 @@
     memberRole: "",
     roleLabel: "",
     userId: "",
-    monthCache: {}
+    monthCache: {},
+    monthResyncToken: 0
   };
 
   function showLoading(flag){
@@ -1605,6 +1606,47 @@
     renderCalendar();
   }
 
+
+  async function queueMonthResyncAfterMutation_(ym, date){
+    if (!ym) return;
+
+    const token = ++state.monthResyncToken;
+
+    try {
+      const res = await apiCall("calendarMonth", { ym });
+      if (!res.ok) return;
+      if (token !== state.monthResyncToken) return;
+
+      mergeIdentityFromResponse(res);
+
+      const refreshedYm = String(res.ym || res.monthData?.ym || ym || state.currentYm);
+      const refreshedMonthData = normalizeMonthData(res);
+      const refreshedSummary = extractSummaryFromResponse(res) || { used: 0, cap: 0, remain: 0 };
+
+      setCachedMonth(refreshedYm, refreshedMonthData, refreshedSummary);
+
+      if (String(state.currentYm || "") !== String(refreshedYm || "")) return;
+
+      state.currentYm = refreshedYm;
+      state.monthData = refreshedMonthData;
+      state.summary = refreshedSummary;
+
+      if (date) {
+        state.selectedDay = refreshedMonthData?.days?.find(d => String(d?.date || "") === String(date)) || null;
+      }
+
+      setMemberInfo();
+      renderSummary();
+      renderCalendar();
+
+      if (state.currentView === "status" && state.statusLoaded) {
+        loadStatus().catch(() => {});
+      }
+    } catch (e) {
+      // ignore background resync error
+    }
+  }
+
   async function loadStatus(){
     try {
       $("statusBox").textContent = "読込中…";
@@ -1740,6 +1782,7 @@
 
       renderSummary();
       renderCalendar();
+      queueMonthResyncAfterMutation_(ym, date);
       return;
     }
 
