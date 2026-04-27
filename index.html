@@ -40,10 +40,7 @@
         calc(env(safe-area-inset-bottom, 0px) + 18px);
     }
 
-    .app{
-      max-width:760px;
-      margin:0 auto;
-    }
+    .app{ max-width:760px; margin:0 auto; }
 
     .topbar{
       display:flex;
@@ -53,9 +50,7 @@
       margin-bottom:14px;
     }
 
-    .titlebox{
-      min-width:0;
-    }
+    .titlebox{ min-width:0; }
 
     .title{
       font-size:20px;
@@ -74,9 +69,8 @@
 
     .iconbtn{
       appearance:none;
-      border:none;
-      background:#fff;
       border:1px solid var(--line);
+      background:#fff;
       color:var(--text);
       min-width:42px;
       height:42px;
@@ -97,10 +91,7 @@
 
     .stack{ display:grid; gap:12px; }
 
-    .summary{
-      display:grid;
-      gap:12px;
-    }
+    .summary{ display:grid; gap:12px; }
 
     .summary-top{
       display:flex;
@@ -123,32 +114,57 @@
       font-weight:600;
     }
 
-    .chips{
+    .point-summary{
       display:grid;
-      grid-template-columns:repeat(3, minmax(0,1fr));
       gap:10px;
     }
 
-    .chip{
+    .point-summary-card{
+      display:grid;
+      gap:10px;
       border:1px solid var(--line);
       border-radius:16px;
-      padding:10px 12px;
+      padding:12px 14px;
       background:#fff;
       min-width:0;
     }
 
-    .chip-label{
-      font-size:11px;
-      color:var(--muted);
-      margin-bottom:4px;
-      font-weight:700;
+    .point-summary-row{
+      display:flex;
+      align-items:baseline;
+      justify-content:space-between;
+      gap:12px;
+      min-width:0;
     }
 
-    .chip-value{
-      font-size:18px;
+    .point-summary-row + .point-summary-row{
+      padding-top:10px;
+      border-top:1px solid rgba(229,231,235,.9);
+    }
+
+    .point-summary-label{
+      color:var(--muted);
+      font-size:12px;
       font-weight:800;
-      line-height:1.2;
+      line-height:1.3;
       white-space:nowrap;
+    }
+
+    .point-summary-value{
+      color:var(--text);
+      font-size:20px;
+      font-weight:900;
+      line-height:1.2;
+      text-align:right;
+      white-space:nowrap;
+    }
+
+    .point-summary-note{
+      color:var(--muted);
+      font-size:11px;
+      font-weight:700;
+      line-height:1.45;
+      margin-top:-2px;
     }
 
     .toolbar{
@@ -159,9 +175,8 @@
 
     .btn{
       appearance:none;
-      border:none;
-      background:#fff;
       border:1px solid var(--line);
+      background:#fff;
       color:var(--text);
       padding:11px 10px;
       border-radius:14px;
@@ -170,23 +185,9 @@
       cursor:pointer;
     }
 
-    .btn.primary{
-      background:var(--primary);
-      color:#fff;
-      border-color:var(--primary);
-    }
-
-    .btn.soft{
-      background:var(--primary-soft);
-      color:var(--primary);
-      border-color:#bfdbfe;
-    }
-
-    .btn.danger{
-      background:var(--danger);
-      color:#fff;
-      border-color:var(--danger);
-    }
+    .btn.primary{ background:var(--primary); color:#fff; border-color:var(--primary); }
+    .btn.soft{ background:var(--primary-soft); color:var(--primary); border-color:#bfdbfe; }
+    .btn.danger{ background:var(--danger); color:#fff; border-color:var(--danger); }
 
     .btn:disabled,
     .iconbtn:disabled,
@@ -206,30 +207,14 @@
       margin-bottom:12px;
     }
 
-    .monthcenter{
-      min-width:0;
-      flex:1;
-      text-align:center;
-    }
-
-    .monthlabel{
-      font-size:20px;
-      font-weight:800;
-      line-height:1.2;
-    }
-
-    .monthsub{
-      font-size:12px;
-      color:var(--muted);
-      margin-top:3px;
-      font-weight:700;
-    }
+    .monthcenter{ min-width:0; flex:1; text-align:center; }
+    .monthlabel{ font-size:20px; font-weight:800; line-height:1.2; }
+    .monthsub{ font-size:12px; color:var(--muted); margin-top:3px; font-weight:700; }
 
     .navbtn{
       appearance:none;
-      border:none;
-      background:#fff;
       border:1px solid var(--line);
+      background:#fff;
       color:var(--text);
       width:42px;
       height:42px;
@@ -292,9 +277,7 @@
       gap:6px;
     }
 
-    .day-empty{
-      min-height:58px;
-    }
+    .day-empty{ min-height:58px; }
 
     .day{
       appearance:none;
@@ -315,11 +298,7 @@
       box-shadow:none;
     }
 
-    .day .num{
-      font-size:15px;
-      font-weight:900;
-      line-height:1;
-    }
+    .day .num{ font-size:15px; font-weight:900; line-height:1; }
 
     .day .mini{
       font-size:10px;
@@ -340,59 +319,23 @@
       background:rgba(0,0,0,.08);
     }
 
-    .day.today{
-      outline:2px solid #93c5fd;
-      outline-offset:1px;
-    }
+    .day.today{ outline:2px solid #93c5fd; outline-offset:1px; }
+    .day.selected{ transform:translateY(-1px); box-shadow:0 8px 18px rgba(37,99,235,.16); }
 
-    .day.selected{
-      transform:translateY(-1px);
-      box-shadow:0 8px 18px rgba(37,99,235,.16);
-    }
+    .day.available{ background:#fff; border-color:#86efac; }
+    .day.available .flag{ background:#16a34a; }
 
-    .day.available{
-      background:#fff;
-      border-color:#86efac;
-    }
-    .day.available .flag{
-      background:#16a34a;
-    }
+    .day.full{ background:#fef2f2; border-color:#ef4444; color:#991b1b; }
+    .day.full .flag{ background:#ef4444; }
 
-    .day.full{
-      background:#fef2f2;
-      border-color:#ef4444;
-      color:#991b1b;
-    }
-    .day.full .flag{
-      background:#ef4444;
-    }
+    .day.own-off{ background:#2563eb; border-color:#2563eb; color:#fff; }
+    .day.own-off .flag{ background:#dbeafe; }
 
-    .day.own-off{
-      background:#2563eb;
-      border-color:#2563eb;
-      color:#fff;
-    }
-    .day.own-off .flag{
-      background:#dbeafe;
-    }
+    .day.own-late{ background:#67e8f9; border-color:#22d3ee; color:#083344; }
+    .day.own-late .flag{ background:#0e7490; }
 
-    .day.own-late{
-      background:#67e8f9;
-      border-color:#22d3ee;
-      color:#083344;
-    }
-    .day.own-late .flag{
-      background:#0e7490;
-    }
-
-    .day.disabled{
-      background:#f3f4f6;
-      border-color:#e5e7eb;
-      color:#9ca3af;
-    }
-    .day.disabled .flag{
-      background:#d1d5db;
-    }
+    .day.disabled{ background:#f3f4f6; border-color:#e5e7eb; color:#9ca3af; }
+    .day.disabled .flag{ background:#d1d5db; }
 
     .statusbox{
       white-space:pre-wrap;
@@ -402,20 +345,9 @@
       min-height:120px;
     }
 
-    .helpbox{
-      line-height:1.85;
-      font-size:13px;
-    }
-
-    .helpbox h3{
-      margin:0 0 8px;
-      font-size:16px;
-    }
-
-    .helpbox .muted{
-      color:var(--muted);
-      font-size:12px;
-    }
+    .helpbox{ line-height:1.85; font-size:13px; }
+    .helpbox h3{ margin:0 0 8px; font-size:16px; }
+    .helpbox .muted{ color:var(--muted); font-size:12px; }
 
     .notice{
       border-radius:14px;
@@ -425,17 +357,8 @@
       line-height:1.6;
     }
 
-    .notice.info{
-      background:#eff6ff;
-      color:#1d4ed8;
-      border:1px solid #bfdbfe;
-    }
-
-    .notice.warn{
-      background:#fff7ed;
-      color:#c2410c;
-      border:1px solid #fed7aa;
-    }
+    .notice.info{ background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; }
+    .notice.warn{ background:#fff7ed; color:#c2410c; border:1px solid #fed7aa; }
 
     .overlay{
       position:fixed;
@@ -447,10 +370,7 @@
       z-index:30;
     }
 
-    .overlay.show{
-      opacity:1;
-      pointer-events:auto;
-    }
+    .overlay.show{ opacity:1; pointer-events:auto; }
 
     .sheet{
       position:fixed;
@@ -471,17 +391,8 @@
       margin:0 auto;
     }
 
-    .sheet.show{
-      transform:translateY(0);
-    }
-
-    .sheet-handle{
-      width:44px;
-      height:5px;
-      border-radius:999px;
-      background:#d1d5db;
-      margin:0 auto 12px;
-    }
+    .sheet.show{ transform:translateY(0); }
+    .sheet-handle{ width:44px; height:5px; border-radius:999px; background:#d1d5db; margin:0 auto 12px; }
 
     .sheet-head{
       display:flex;
@@ -491,31 +402,10 @@
       margin-bottom:12px;
     }
 
-    .sheet-title{
-      font-size:18px;
-      font-weight:900;
-      line-height:1.2;
-    }
-
-    .sheet-sub{
-      margin-top:5px;
-      font-size:12px;
-      color:var(--muted);
-      line-height:1.5;
-      white-space:pre-wrap;
-    }
-
-    .sheet-actions{
-      display:grid;
-      gap:10px;
-      margin-top:12px;
-    }
-
-    .sheet-grid{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:10px;
-    }
+    .sheet-title{ font-size:18px; font-weight:900; line-height:1.2; }
+    .sheet-sub{ margin-top:5px; font-size:12px; color:var(--muted); line-height:1.5; white-space:pre-wrap; }
+    .sheet-actions{ display:grid; gap:10px; margin-top:12px; }
+    .sheet-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 
     .close-mini{
       appearance:none;
@@ -552,10 +442,7 @@
       white-space:pre-wrap;
     }
 
-    .toast.show{
-      opacity:1;
-      transform:translateX(-50%) translateY(0);
-    }
+    .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
     .loading{
       position:fixed;
@@ -571,10 +458,7 @@
       transition:.18s ease;
     }
 
-    .loading.show{
-      opacity:1;
-      pointer-events:auto;
-    }
+    .loading.show{ opacity:1; pointer-events:auto; }
 
     .spinner{
       width:46px;
@@ -585,30 +469,14 @@
       animation:spin .85s linear infinite;
     }
 
-    @keyframes spin{
-      to{ transform:rotate(360deg); }
-    }
+    @keyframes spin{ to{ transform:rotate(360deg); } }
 
     @media (max-width: 520px){
-      .chips{
-        grid-template-columns:1fr 1fr;
-      }
-      .toolbar{
-        grid-template-columns:1fr 1fr;
-      }
-      .day{
-        min-height:58px;
-        padding:8px 5px 6px;
-      }
-      .day .num{
-        font-size:14px;
-      }
-      .day .mini{
-        font-size:9px;
-      }
-      .sheet-grid{
-        grid-template-columns:1fr;
-      }
+      .toolbar{ grid-template-columns:1fr 1fr; }
+      .day{ min-height:58px; padding:8px 5px 6px; }
+      .day .num{ font-size:14px; }
+      .day .mini{ font-size:9px; }
+      .sheet-grid{ grid-template-columns:1fr; }
     }
   </style>
 </head>
@@ -633,18 +501,17 @@
           <button class="btn soft" id="btnRefresh" type="button">更新</button>
         </div>
 
-        <div class="chips">
-          <div class="chip">
-            <div class="chip-label">表示月の使用予定ポイント</div>
-            <div class="chip-value" id="usedValue">-</div>
-          </div>
-          <div class="chip">
-            <div class="chip-label">月間使用上限ポイント</div>
-            <div class="chip-value" id="capValue">-</div>
-          </div>
-          <div class="chip">
-            <div class="chip-label">表示月の使用可能残ポイント</div>
-            <div class="chip-value" id="remainValue">-</div>
+        <div class="point-summary" id="pointSummary">
+          <div class="point-summary-card">
+            <div class="point-summary-row">
+              <div class="point-summary-label">保有ポイント</div>
+              <div class="point-summary-value" id="pointBalanceValue">-</div>
+            </div>
+            <div class="point-summary-row">
+              <div class="point-summary-label">今月使用</div>
+              <div class="point-summary-value" id="monthUseValue">-</div>
+            </div>
+            <div class="point-summary-note">公休：2P消費 / 遅公：1P消費</div>
           </div>
         </div>
 
@@ -718,7 +585,7 @@
             ・赤：満枠<br>
             ・青：自分が公休申請済み<br>
             ・水色：自分が遅公申請済み<br>
-            ・薄灰：申請不可 / 遅公のみ申請可 / 範囲外
+            ・薄灰：申請不可 / 遅公のみ申請可 / 範囲外 / ポイント不足
           </div>
           <br>
           <div>
@@ -767,7 +634,7 @@
   <div class="loading" id="loading"><div class="spinner"></div></div>
 
 <script>
-  const UI_VERSION = "2026-03-27-01";
+  const UI_VERSION = "2026-04-27-01-point-summary";
   const LIFF_ID = "2009229315-1mExjcwZ";
   const ENDPOINT = "https://attendance-relay.heaven1059-gd.workers.dev";
 
@@ -796,9 +663,7 @@
     monthResyncToken: 0
   };
 
-  function showLoading(flag){
-    $("loading").classList.toggle("show", !!flag);
-  }
+  function showLoading(flag){ $("loading").classList.toggle("show", !!flag); }
 
   let toastTimer = null;
   function showToast(text){
@@ -809,13 +674,8 @@
     toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
   }
 
-  function pad2(n){
-    return String(n).padStart(2, "0");
-  }
-
-  function ymLocal(d = new Date()){
-    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`;
-  }
+  function pad2(n){ return String(n).padStart(2, "0"); }
+  function ymLocal(d = new Date()){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`; }
 
   function parseYm(ym){
     const m = String(ym || "").match(/^(\d{4})-(\d{2})$/);
@@ -836,9 +696,7 @@
     return `${dt.getFullYear()}-${pad2(dt.getMonth()+1)}`;
   }
 
-  function compareYm(a, b){
-    return String(a).localeCompare(String(b));
-  }
+  function compareYm(a, b){ return String(a).localeCompare(String(b)); }
 
   function formatDateJa(ymd){
     const m = String(ymd || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -855,25 +713,12 @@
       .replace(/3ヶ月/g, "2ヶ月");
   }
 
-  function getQueryParam(name){
-    return new URLSearchParams(location.search).get(name);
-  }
+  function getQueryParam(name){ return new URLSearchParams(location.search).get(name); }
 
-  function safeGetIdToken(){
-    try { return liff.getIDToken() || ""; } catch(e){ return ""; }
-  }
-
-  function safeGetAccessToken(){
-    try { return liff.getAccessToken() || ""; } catch(e){ return ""; }
-  }
-
-  function safeGetUserIdFromIdToken(){
-    try { return liff.getDecodedIDToken()?.sub || ""; } catch(e){ return ""; }
-  }
-
-  function safeGetUserIdFromContext(){
-    try { return liff.getContext()?.userId || ""; } catch(e){ return ""; }
-  }
+  function safeGetIdToken(){ try { return liff.getIDToken() || ""; } catch(e){ return ""; } }
+  function safeGetAccessToken(){ try { return liff.getAccessToken() || ""; } catch(e){ return ""; } }
+  function safeGetUserIdFromIdToken(){ try { return liff.getDecodedIDToken()?.sub || ""; } catch(e){ return ""; } }
+  function safeGetUserIdFromContext(){ try { return liff.getContext()?.userId || ""; } catch(e){ return ""; } }
 
   function getBestUserId(){
     return (
@@ -923,9 +768,7 @@
     return undefined;
   }
 
-  function cloneData(obj){
-    return JSON.parse(JSON.stringify(obj));
-  }
+  function cloneData(obj){ return JSON.parse(JSON.stringify(obj)); }
 
   function getCachedMonth(ym){
     const cached = state.monthCache[ym];
@@ -935,15 +778,10 @@
 
   function setCachedMonth(ym, monthData, summary){
     if (!ym || !monthData) return;
-    state.monthCache[ym] = cloneData({
-      monthData,
-      summary: summary || null
-    });
+    state.monthCache[ym] = cloneData({ monthData, summary: summary || null });
   }
 
-  function clearAllMonthCache(){
-    state.monthCache = {};
-  }
+  function clearAllMonthCache(){ state.monthCache = {}; }
 
   async function apiCall(action, payload = {}){
     const idToken = safeGetIdToken();
@@ -991,20 +829,17 @@
 
         return parsed;
       } catch (e) {
-        return {
-          ok: false,
-          message: `API応答エラー\naction=${action}\n${String(text).slice(0, 300)}`
-        };
+        return { ok:false, message:`API応答エラー\naction=${action}\n${String(text).slice(0, 300)}` };
       }
     } catch (e) {
-      if (e.name === "AbortError") {
-        return { ok:false, message:`APIタイムアウト\naction=${action}` };
-      }
+      if (e.name === "AbortError") return { ok:false, message:`APIタイムアウト\naction=${action}` };
       return { ok:false, message:`通信エラー\naction=${action}\n${e.message || e}` };
     } finally {
       clearTimeout(timer);
     }
   }
+
+  function capitalize(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
 
   function setView(view){
     state.currentView = view;
@@ -1013,64 +848,21 @@
     });
   }
 
-  function capitalize(s){
-    return s.charAt(0).toUpperCase() + s.slice(1);
-  }
-
   function mergeIdentityFromResponse(res){
     if (!res || typeof res !== "object") return;
 
     const apiName = deepFindByKeys(res, [
-      "registeredName",
-      "memberName",
-      "genjiName",
-      "sourceName",
-      "staffName",
-      "userName",
-      "name"
+      "registeredName", "memberName", "genjiName", "sourceName", "staffName", "userName", "name"
     ], "string");
 
-    const apiRole = deepFindByKeys(res, [
-      "role",
-      "memberRole"
-    ], "string");
+    const apiRole = deepFindByKeys(res, ["role", "memberRole"], "string");
+    const apiRoleLabel = deepFindByKeys(res, ["roleLabel", "memberRoleLabel"], "string");
+    const apiUserId = deepFindByKeys(res, ["userId", "lineUserId", "lineUid", "uid", "sub"], "string");
 
-    const apiRoleLabel = deepFindByKeys(res, [
-      "roleLabel",
-      "memberRoleLabel"
-    ], "string");
-
-    const apiUserId = deepFindByKeys(res, [
-      "userId",
-      "lineUserId",
-      "lineUid",
-      "uid",
-      "sub"
-    ], "string");
-
-    state.memberName =
-      apiName ||
-      state.memberName ||
-      state.profile?.displayName ||
-      "未登録";
-
-    state.memberRole =
-      apiRole ||
-      state.memberRole ||
-      "";
-
-    state.roleLabel =
-      apiRoleLabel ||
-      state.roleLabel ||
-      "";
-
-    state.userId =
-      apiUserId ||
-      state.userId ||
-      state.profile?.userId ||
-      safeGetUserIdFromContext() ||
-      safeGetUserIdFromIdToken() ||
-      "";
+    state.memberName = apiName || state.memberName || state.profile?.displayName || "未登録";
+    state.memberRole = apiRole || state.memberRole || "";
+    state.roleLabel = apiRoleLabel || state.roleLabel || "";
+    state.userId = apiUserId || state.userId || state.profile?.userId || safeGetUserIdFromContext() || safeGetUserIdFromIdToken() || "";
   }
 
   function setMemberInfo(){
@@ -1083,20 +875,32 @@
   function normalizeSummary(raw){
     if (!raw) return null;
 
-    const used = deepFindByKeys(raw, ["used", "monthUsed", "pointsUsed", "usedPoints"], "number");
-    const cap = deepFindByKeys(raw, ["cap", "monthCap", "limit", "pointCap"], "number");
+    const balance = deepFindByKeys(raw, [
+      "pointBalance", "balance", "currentPointBalance", "totalPointBalance",
+      "ownedPoints", "availablePointBalance", "availablePoints"
+    ], "number");
+
+    const used = deepFindByKeys(raw, [
+      "used", "monthUsed", "pointsUsed", "usedPoints", "monthUsedPoints", "usedPoint"
+    ], "number");
+
+    const cap = deepFindByKeys(raw, [
+      "cap", "monthCap", "limit", "pointCap", "monthlyCap", "monthLimit"
+    ], "number");
+
+    // 旧レスポンス互換用。UIには残ポイントを表示しないが、balance未返却時の安全値として使う。
     const remain = deepFindByKeys(raw, ["remain", "remaining", "pointsRemain", "remainPoints"], "number");
 
-    if (used === undefined && cap === undefined && remain === undefined) return null;
+    if (balance === undefined && used === undefined && cap === undefined && remain === undefined) return null;
 
+    const safeBalance = Number(balance ?? remain ?? 0);
     const safeUsed = Number(used ?? 0);
     const safeCap = Number(cap ?? 0);
-    const safeRemain = Number(remain ?? Math.max(0, safeCap - safeUsed));
 
     return {
-      used: safeUsed,
-      cap: safeCap,
-      remain: safeRemain
+      balance: Number.isFinite(safeBalance) ? safeBalance : 0,
+      used: Number.isFinite(safeUsed) ? safeUsed : 0,
+      cap: Number.isFinite(safeCap) ? safeCap : 0
     };
   }
 
@@ -1104,37 +908,44 @@
     return normalizeSummary(raw?.summary || raw?.monthSummary || raw);
   }
 
-  function renderSummary(){
-    const s = state.summary || { used: 0, cap: 0, remain: 0 };
+  function formatPointText(value){
+    const n = Number(value);
+    if (!Number.isFinite(n)) return "0P";
+    return `${Number.isInteger(n) ? n : Number(n.toFixed(2))}P`;
+  }
 
-    $("usedValue").textContent = `${Number(s.used || 0)}P`;
-    $("capValue").textContent = s.cap ? `${Number(s.cap || 0)}P` : "-";
-    $("remainValue").textContent = s.cap ? `${Number(s.remain || 0)}P` : "-";
+  function renderSummary(){
+    const s = state.summary || { balance:0, used:0, cap:0 };
+    const balance = Number(s.balance ?? 0);
+    const used = Number(s.used ?? 0);
+    const cap = Number(s.cap ?? 0);
+
+    $("pointBalanceValue").textContent = formatPointText(balance);
+    $("monthUseValue").textContent = cap
+      ? `${formatPointText(used)} / ${formatPointText(cap)}`
+      : `${formatPointText(used)} / -`;
 
     if (state.currentYm) {
       if (!state.monthCache[state.currentYm]) state.monthCache[state.currentYm] = {};
-      state.monthCache[state.currentYm].summary = cloneData(s);
+      state.monthCache[state.currentYm].summary = cloneData({
+        balance: Number.isFinite(balance) ? balance : 0,
+        used: Number.isFinite(used) ? used : 0,
+        cap: Number.isFinite(cap) ? cap : 0
+      });
     }
   }
 
   function normalizeOwnKind(raw){
     const s = String(raw || "").trim();
     if (!s) return "";
-
     if (["公休", "off", "OFF", "own_off", "休み"].includes(s)) return "公休";
     if (["遅公", "late", "LATE", "own_late"].includes(s)) return "遅公";
-
     return s === "公休" || s === "遅公" ? s : "";
   }
 
   function deriveOwnKind(day){
     return normalizeOwnKind(
-      day?.ownKind ??
-      day?.myStatus ??
-      day?.requestType ??
-      day?.statusName ??
-      day?.mine ??
-      ""
+      day?.ownKind ?? day?.myStatus ?? day?.requestType ?? day?.statusName ?? day?.mine ?? ""
     );
   }
 
@@ -1154,43 +965,10 @@
   }
 
   function deriveActions(ownKind, stateName){
-    if (ownKind === "公休") {
-      return {
-        canApplyOff: false,
-        canApplyLate: false,
-        canChangeToOff: false,
-        canChangeToLate: true,
-        canCancel: true
-      };
-    }
-
-    if (ownKind === "遅公") {
-      return {
-        canApplyOff: false,
-        canApplyLate: false,
-        canChangeToOff: true,
-        canChangeToLate: false,
-        canCancel: true
-      };
-    }
-
-    if (stateName === "available") {
-      return {
-        canApplyOff: true,
-        canApplyLate: true,
-        canChangeToOff: false,
-        canChangeToLate: false,
-        canCancel: false
-      };
-    }
-
-    return {
-      canApplyOff: false,
-      canApplyLate: false,
-      canChangeToOff: false,
-      canChangeToLate: false,
-      canCancel: false
-    };
+    if (ownKind === "公休") return { canApplyOff:false, canApplyLate:false, canChangeToOff:false, canChangeToLate:true, canCancel:true };
+    if (ownKind === "遅公") return { canApplyOff:false, canApplyLate:false, canChangeToOff:true, canChangeToLate:false, canCancel:true };
+    if (stateName === "available") return { canApplyOff:true, canApplyLate:true, canChangeToOff:false, canChangeToLate:false, canCancel:false };
+    return { canApplyOff:false, canApplyLate:false, canChangeToOff:false, canChangeToLate:false, canCancel:false };
   }
 
   function normalizeDayObject(day, fallbackDate = ""){
@@ -1198,13 +976,8 @@
     const m = date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     const dayNum = m ? Number(m[3]) : Number(day?.day || 0);
 
-    const count = day?.count === undefined || day?.count === null || day?.count === ""
-      ? null
-      : Number(day.count);
-
-    const limit = day?.limit === undefined || day?.limit === null || day?.limit === ""
-      ? null
-      : Number(day.limit);
+    const count = day?.count === undefined || day?.count === null || day?.count === "" ? null : Number(day.count);
+    const limit = day?.limit === undefined || day?.limit === null || day?.limit === "" ? null : Number(day.limit);
 
     const ownKind = deriveOwnKind(day);
     const stateName = deriveState(day, ownKind, count, limit);
@@ -1257,19 +1030,11 @@
   function getLiveDayByDate(date){
     const live = findDayInMonthData(state.monthData, date);
     if (live) return normalizeDayObject(live, date);
-
-    return normalizeDayObject({
-      date,
-      state: "disabled",
-      badge: "",
-      ownKind: "",
-      disabledReason: "読込データなし"
-    }, date);
+    return normalizeDayObject({ date, state:"disabled", badge:"", ownKind:"", disabledReason:"読込データなし" }, date);
   }
 
   function replaceDayInMonthData(monthData, newDay){
     if (!monthData?.days || !Array.isArray(monthData.days) || !newDay?.date) return;
-
     const normalized = normalizeDayObject(newDay, newDay.date);
     const idx = monthData.days.findIndex(d => String(d?.date || "") === String(normalized.date));
 
@@ -1285,13 +1050,8 @@
     const normalized = normalizeDayObject(day, day?.date || "");
     if (!normalized.date) return;
 
-    if (state.currentYm === ym && state.monthData) {
-      replaceDayInMonthData(state.monthData, normalized);
-    }
-
-    if (state.monthCache[ym]?.monthData) {
-      replaceDayInMonthData(state.monthCache[ym].monthData, normalized);
-    }
+    if (state.currentYm === ym && state.monthData) replaceDayInMonthData(state.monthData, normalized);
+    if (state.monthCache[ym]?.monthData) replaceDayInMonthData(state.monthCache[ym].monthData, normalized);
   }
 
   function getCellClass(day){
@@ -1324,14 +1084,6 @@
     `;
   }
 
-  function updateRenderedDay(date, day){
-    if (!date || !day) return false;
-    const btn = document.querySelector(`.day[data-date="${date}"]`);
-    if (!btn) return false;
-    renderDayButton(btn, normalizeDayObject(day, date));
-    return true;
-  }
-
   function canMoveMonth(delta){
     const nextYm = shiftYm(state.currentYm, delta);
     if (!nextYm) return false;
@@ -1361,10 +1113,7 @@
     const firstDow = new Date(ym.y, ym.m - 1, 1).getDay();
     const lastDay = new Date(ym.y, ym.m, 0).getDate();
     const map = new Map();
-
-    data.days.forEach(d => {
-      if (d?.date) map.set(String(d.date), d);
-    });
+    data.days.forEach(d => { if (d?.date) map.set(String(d.date), d); });
 
     for (let i = 0; i < firstDow; i++) {
       const empty = document.createElement("div");
@@ -1377,23 +1126,21 @@
       const day = normalizeDayObject(map.get(date) || {
         date,
         day: dayNum,
-        state: "disabled",
-        badge: "",
-        ownKind: "",
-        disabledReason: "読込データなし"
+        state:"disabled",
+        badge:"",
+        ownKind:"",
+        disabledReason:"読込データなし"
       }, date);
 
       const btn = document.createElement("button");
       btn.type = "button";
       renderDayButton(btn, day);
-
       btn.addEventListener("click", () => {
         const liveDay = getLiveDayByDate(date);
         state.selectedDay = liveDay;
         renderCalendar();
         openActionSheet(liveDay);
       });
-
       wrap.appendChild(btn);
     }
 
@@ -1407,88 +1154,64 @@
 
     $("btnPrevMonth").disabled = !canMoveMonth(-1);
     $("btnNextMonth").disabled = !canMoveMonth(1);
-
-    $("calendarNotice").textContent = data.note
-      ? data.note
-      : "日付をタップすると、その日の申請・変更・取消ができます。";
+    $("calendarNotice").textContent = data.note || "日付をタップすると、その日の申請・変更・取消ができます。";
   }
 
   function openActionSheet(day){
-  const ownKind = String(day?.ownKind || "");
-  const badge = String(day?.badge || "").trim();
-  const disabledReason = String(day?.disabledReason || "").trim();
+    const ownKind = String(day?.ownKind || "");
+    const badge = String(day?.badge || "").trim();
+    const disabledReason = String(day?.disabledReason || "").trim();
 
-  const isLateOnlyPolicy =
-    !ownKind &&
-    (badge === "遅公のみ" || /遅公のみ/.test(disabledReason));
+    const isLateOnlyPolicy = !ownKind && (badge === "遅公のみ" || /遅公のみ/.test(disabledReason));
+    const isOffOnlyPolicy = !ownKind && (badge === "公休のみ" || /公休のみ/.test(disabledReason));
 
-  const isOffOnlyPolicy =
-    !ownKind &&
-    (badge === "公休のみ" || /公休のみ/.test(disabledReason));
+    const derivedActions = deriveActions(ownKind, String(day?.state || ""));
+    const hasServerActions = !!(day?.actions && typeof day.actions === "object");
 
-  const derivedActions = deriveActions(ownKind, String(day?.state || ""));
-  const hasServerActions = !!(day?.actions && typeof day.actions === "object");
+    let actions = hasServerActions
+      ? {
+          canApplyOff: !!day.actions.canApplyOff,
+          canApplyLate: !!day.actions.canApplyLate,
+          canChangeToOff: !!day.actions.canChangeToOff,
+          canChangeToLate: !!day.actions.canChangeToLate,
+          canCancel: !!day.actions.canCancel
+        }
+      : derivedActions;
 
-  let actions = hasServerActions
-    ? {
-        canApplyOff: !!day.actions.canApplyOff,
-        canApplyLate: !!day.actions.canApplyLate,
-        canChangeToOff: !!day.actions.canChangeToOff,
-        canChangeToLate: !!day.actions.canChangeToLate,
-        canCancel: !!day.actions.canCancel
+    if (!ownKind && !hasServerActions && !actions.canApplyOff && !actions.canApplyLate) {
+      if (isLateOnlyPolicy) {
+        actions.canApplyLate = true;
+        actions.canApplyOff = false;
+      } else if (isOffOnlyPolicy) {
+        actions.canApplyOff = true;
+        actions.canApplyLate = false;
       }
-    : derivedActions;
-
-  if (!ownKind && !hasServerActions && !actions.canApplyOff && !actions.canApplyLate) {
-    if (isLateOnlyPolicy) {
-      actions.canApplyLate = true;
-      actions.canApplyOff = false;
-    } else if (isOffOnlyPolicy) {
-      actions.canApplyOff = true;
-      actions.canApplyLate = false;
     }
+
+    const descLines = [];
+    if (ownKind) descLines.push(`現在の申請：${ownKind}`);
+    else if (day.state === "full") descLines.push("現在：満枠");
+    else if (isLateOnlyPolicy) descLines.push("現在：遅公のみ申請可能");
+    else if (isOffOnlyPolicy) descLines.push("現在：公休のみ申請可能");
+    else if (day.state === "disabled") descLines.push("現在：申請制限あり");
+    else descLines.push("現在：申請可能");
+
+    if (disabledReason) descLines.push(disabledReason);
+    else if (ownKind && !actions.canChangeToOff && !actions.canChangeToLate && !actions.canCancel) descLines.push("変更・取消はできません");
+
+    $("sheetDateLabel").textContent = formatDateJa(day.date);
+    $("sheetDesc").textContent = descLines.join("\n");
+
+    $("btnApplyOff").disabled = !actions.canApplyOff;
+    $("btnApplyLate").disabled = !actions.canApplyLate;
+    $("btnChangeOff").disabled = !actions.canChangeToOff;
+    $("btnChangeLate").disabled = !actions.canChangeToLate;
+    $("btnCancelRequest").disabled = !actions.canCancel;
+
+    $("actionSheet").classList.add("show");
+    $("sheetOverlay").classList.add("show");
+    $("actionSheet").setAttribute("aria-hidden", "false");
   }
-
-  const descLines = [];
-
-  if (ownKind) {
-    descLines.push(`現在の申請：${ownKind}`);
-  } else if (day.state === "full") {
-    descLines.push("現在：満枠");
-  } else if (isLateOnlyPolicy) {
-    descLines.push("現在：遅公のみ申請可能");
-  } else if (isOffOnlyPolicy) {
-    descLines.push("現在：公休のみ申請可能");
-  } else if (day.state === "disabled") {
-    descLines.push("現在：申請制限あり");
-  } else {
-    descLines.push("現在：申請可能");
-  }
-
-  if (disabledReason) {
-    descLines.push(disabledReason);
-  } else if (
-    ownKind &&
-    !actions.canChangeToOff &&
-    !actions.canChangeToLate &&
-    !actions.canCancel
-  ) {
-    descLines.push("変更・取消はできません");
-  }
-
-  $("sheetDateLabel").textContent = formatDateJa(day.date);
-  $("sheetDesc").textContent = descLines.join("\n");
-
-  $("btnApplyOff").disabled = !actions.canApplyOff;
-  $("btnApplyLate").disabled = !actions.canApplyLate;
-  $("btnChangeOff").disabled = !actions.canChangeToOff;
-  $("btnChangeLate").disabled = !actions.canChangeToLate;
-  $("btnCancelRequest").disabled = !actions.canCancel;
-
-  $("actionSheet").classList.add("show");
-  $("sheetOverlay").classList.add("show");
-  $("actionSheet").setAttribute("aria-hidden", "false");
-}
 
   function closeActionSheet(){
     $("actionSheet").classList.remove("show");
@@ -1498,17 +1221,10 @@
 
   function extractUpdatedDayFromResponse(res, date){
     if (!res || !date) return null;
-
-    if (res.updatedDay) {
-      return normalizeDayObject(res.updatedDay, date);
-    }
-
-    if (res.day) {
-      return normalizeDayObject(res.day, date);
-    }
+    if (res.updatedDay) return normalizeDayObject(res.updatedDay, date);
+    if (res.day) return normalizeDayObject(res.day, date);
 
     const src = res.monthData || res;
-
     if (Array.isArray(src?.days)) {
       const found = src.days.find(d => String(d?.date || "") === String(date));
       if (found) return normalizeDayObject(found, date);
@@ -1523,7 +1239,6 @@
 
   function buildOptimisticDay(baseDay, op, kind){
     if (!baseDay?.date) return null;
-
     const day = cloneData(baseDay);
     const currentOwnKind = String(day.ownKind || "");
     const hasCount = Number.isFinite(Number(day.count));
@@ -1549,23 +1264,15 @@
     day.badge = "";
     day.disabledReason = "";
     delete day.actions;
-
     return normalizeDayObject(day, day.date);
   }
 
   async function reloadMonthAfterMutationFallback_(ym, date){
     if (!ym) return;
-
     try {
-      await loadMonth(ym, { force: true });
-
-      if (date) {
-        state.selectedDay = getLiveDayByDate(date);
-      }
-
-      if (state.statusLoaded && state.currentView === "status") {
-        loadStatus().catch(() => {});
-      }
+      await loadMonth(ym, { force:true });
+      if (date) state.selectedDay = getLiveDayByDate(date);
+      if (state.statusLoaded && state.currentView === "status") loadStatus().catch(() => {});
     } catch (e) {
       // ignore
     }
@@ -1579,8 +1286,7 @@
       if (cached?.monthData) {
         state.currentYm = ym;
         state.monthData = cached.monthData;
-        state.summary = cached.summary ? cloneData(cached.summary) : { used: 0, cap: 0, remain: 0 };
-
+        state.summary = cached.summary ? cloneData(cached.summary) : { balance:0, used:0, cap:0 };
         setMemberInfo();
         renderSummary();
         renderCalendar();
@@ -1589,27 +1295,21 @@
     }
 
     const res = await apiCall("calendarMonth", { ym });
-    if (!res.ok) {
-      throw new Error(res.message || "月データ取得に失敗しました。");
-    }
+    if (!res.ok) throw new Error(res.message || "月データ取得に失敗しました。");
 
     mergeIdentityFromResponse(res);
-
     state.currentYm = String(res.ym || res.monthData?.ym || ym || state.currentYm);
     state.monthData = normalizeMonthData(res);
-    state.summary = extractSummaryFromResponse(res) || { used: 0, cap: 0, remain: 0 };
+    state.summary = extractSummaryFromResponse(res) || { balance:0, used:0, cap:0 };
 
     setCachedMonth(state.currentYm, state.monthData, state.summary);
-
     setMemberInfo();
     renderSummary();
     renderCalendar();
   }
 
-
   async function queueMonthResyncAfterMutation_(ym, date){
     if (!ym) return;
-
     const token = ++state.monthResyncToken;
 
     try {
@@ -1618,30 +1318,24 @@
       if (token !== state.monthResyncToken) return;
 
       mergeIdentityFromResponse(res);
-
       const refreshedYm = String(res.ym || res.monthData?.ym || ym || state.currentYm);
       const refreshedMonthData = normalizeMonthData(res);
-      const refreshedSummary = extractSummaryFromResponse(res) || { used: 0, cap: 0, remain: 0 };
+      const refreshedSummary = extractSummaryFromResponse(res) || { balance:0, used:0, cap:0 };
 
       setCachedMonth(refreshedYm, refreshedMonthData, refreshedSummary);
-
       if (String(state.currentYm || "") !== String(refreshedYm || "")) return;
 
       state.currentYm = refreshedYm;
       state.monthData = refreshedMonthData;
       state.summary = refreshedSummary;
 
-      if (date) {
-        state.selectedDay = refreshedMonthData?.days?.find(d => String(d?.date || "") === String(date)) || null;
-      }
+      if (date) state.selectedDay = refreshedMonthData?.days?.find(d => String(d?.date || "") === String(date)) || null;
 
       setMemberInfo();
       renderSummary();
       renderCalendar();
 
-      if (state.currentView === "status" && state.statusLoaded) {
-        loadStatus().catch(() => {});
-      }
+      if (state.currentView === "status" && state.statusLoaded) loadStatus().catch(() => {});
     } catch (e) {
       // ignore background resync error
     }
@@ -1650,12 +1344,10 @@
   async function loadStatus(){
     try {
       $("statusBox").textContent = "読込中…";
-
       const res = await apiCall("status", {});
       if (!res.ok) throw new Error(res.message || "状況取得に失敗しました。");
 
       mergeIdentityFromResponse(res);
-
       state.statusText = res.planText || res.message || "データなし";
       state.statusLoaded = true;
       $("statusBox").textContent = state.statusText;
@@ -1663,12 +1355,10 @@
       const explicitSummary = extractSummaryFromResponse(res);
       if (explicitSummary) {
         state.summary = explicitSummary;
-
         if (state.currentYm) {
           if (!state.monthCache[state.currentYm]) state.monthCache[state.currentYm] = {};
           state.monthCache[state.currentYm].summary = cloneData(state.summary);
         }
-
         renderSummary();
       }
 
@@ -1686,50 +1376,41 @@
 
   async function postApply(kind){
     if (!state.selectedDay?.date) return;
-
     const targetDate = state.selectedDay.date;
     const targetYm = targetDate.slice(0, 7);
-
-    const res = await apiCall("apply", { kind, date: targetDate, memo: "" });
+    const res = await apiCall("apply", { kind, date: targetDate, memo:"" });
     if (!res.ok) {
       await reloadMonthAfterMutationFallback_(targetYm, targetDate);
       throw new Error(res.message || "申請に失敗しました。");
     }
-
     showToast(`受付OK\n${kind} ${targetDate}`);
-    await afterMutation(res, { op: "apply", kind, date: targetDate });
+    await afterMutation(res, { op:"apply", kind, date:targetDate });
   }
 
   async function postChange(kind){
     if (!state.selectedDay?.date) return;
-
     const targetDate = state.selectedDay.date;
     const targetYm = targetDate.slice(0, 7);
-
     const res = await apiCall("change", { kind, date: targetDate });
     if (!res.ok) {
       await reloadMonthAfterMutationFallback_(targetYm, targetDate);
       throw new Error(res.message || "変更に失敗しました。");
     }
-
     showToast(`変更OK\n${targetDate}`);
-    await afterMutation(res, { op: "change", kind, date: targetDate });
+    await afterMutation(res, { op:"change", kind, date:targetDate });
   }
 
   async function postCancel(){
     if (!state.selectedDay?.date) return;
-
     const targetDate = state.selectedDay.date;
     const targetYm = targetDate.slice(0, 7);
-
     const res = await apiCall("cancel", { date: targetDate });
     if (!res.ok) {
       await reloadMonthAfterMutationFallback_(targetYm, targetDate);
       throw new Error(res.message || "取消に失敗しました。");
     }
-
     showToast(`取消OK\n${targetDate}`);
-    await afterMutation(res, { op: "cancel", kind: "", date: targetDate });
+    await afterMutation(res, { op:"cancel", kind:"", date:targetDate });
   }
 
   async function afterMutation(res, mutation){
@@ -1739,7 +1420,7 @@
     const ym = state.currentYm || (date ? date.slice(0, 7) : "");
     const baseDay = state.selectedDay ? cloneData(state.selectedDay) : findDayInMonthData(state.monthData, date);
 
-    let serverDay = extractUpdatedDayFromResponse(res, date);
+    const serverDay = extractUpdatedDayFromResponse(res, date);
     const optimisticDay = baseDay ? buildOptimisticDay(baseDay, mutation?.op, mutation?.kind) : null;
     let nextDay = null;
 
@@ -1776,26 +1457,18 @@
     if (ym && nextDay) {
       upsertDayInState(ym, nextDay);
       state.selectedDay = getLiveDayByDate(date);
-
       if (!state.monthCache[ym]) state.monthCache[ym] = {};
       state.monthCache[ym].monthData = cloneData(state.monthData);
-
       renderSummary();
       renderCalendar();
       queueMonthResyncAfterMutation_(ym, date);
       return;
     }
 
-    await loadMonth(state.currentYm, { force: true });
+    await loadMonth(state.currentYm, { force:true });
     renderSummary();
-
-    if (date) {
-      state.selectedDay = getLiveDayByDate(date);
-    }
-
-    if (state.currentView === "status" && state.statusLoaded) {
-      loadStatus().catch(() => {});
-    }
+    if (date) state.selectedDay = getLiveDayByDate(date);
+    if (state.currentView === "status" && state.statusLoaded) loadStatus().catch(() => {});
   }
 
   async function guarded(fn){
@@ -1822,28 +1495,20 @@
         return;
       }
 
-      state.userId =
-        safeGetUserIdFromContext() ||
-        safeGetUserIdFromIdToken() ||
-        "";
-
+      state.userId = safeGetUserIdFromContext() || safeGetUserIdFromIdToken() || "";
       const profilePromise = liff.getProfile().catch(() => null);
 
       $("subtitle").textContent = `初期データ取得中… / UI ${UI_VERSION}`;
-
       const initRes = await apiCall("calendarInit", {
-        ym: "",
-        view: getQueryParam("view") || "calendar",
-        offset: Number(getQueryParam("offset") || "0")
+        ym:"",
+        view:getQueryParam("view") || "calendar",
+        offset:Number(getQueryParam("offset") || "0")
       });
 
-      if (!initRes.ok) {
-        throw new Error(initRes.message || "初期化に失敗しました。");
-      }
+      if (!initRes.ok) throw new Error(initRes.message || "初期化に失敗しました。");
 
       mergeIdentityFromResponse(initRes);
-
-      state.summary = extractSummaryFromResponse(initRes) || { used:0, cap:0, remain:0 };
+      state.summary = extractSummaryFromResponse(initRes) || { balance:0, used:0, cap:0 };
       state.baseYm = String(initRes.baseYm || ymLocal());
       state.currentYm = String(initRes.currentYm || initRes.monthData?.ym || state.baseYm || ymLocal());
       state.maxYm = String(initRes.maxYm || shiftYm(state.baseYm, UI_MAX_MONTH_OFFSET));
@@ -1852,20 +1517,14 @@
       renderSummary();
 
       const initialView = String(getQueryParam("view") || "calendar");
-      if (initialView === "status") {
-        setView("status");
-      } else if (initialView === "help") {
-        setView("help");
-      } else {
-        setView("calendar");
-      }
+      if (initialView === "status") setView("status");
+      else if (initialView === "help") setView("help");
+      else setView("calendar");
 
       let firstYm = state.currentYm;
       if (Number(getQueryParam("offset") || "0") === 1) {
         const nextYm = shiftYm(state.baseYm, 1);
-        if (nextYm && compareYm(nextYm, state.maxYm) <= 0) {
-          firstYm = nextYm;
-        }
+        if (nextYm && compareYm(nextYm, state.maxYm) <= 0) firstYm = nextYm;
       }
       state.currentYm = firstYm;
 
@@ -1881,24 +1540,16 @@
         await loadMonth(firstYm);
       }
 
-      if (initialView === "status") {
-        await ensureStatusLoaded(false);
-      } else {
-        $("statusBox").textContent = "申請状況は表示時に読み込みます。";
-      }
+      if (initialView === "status") await ensureStatusLoaded(false);
+      else $("statusBox").textContent = "申請状況は表示時に読み込みます。";
 
       $("subtitle").textContent = `LINE連携済み / UI ${UI_VERSION}`;
 
       profilePromise.then(profile => {
         if (!profile) return;
-
         state.profile = profile;
         state.userId = state.userId || profile.userId || "";
-
-        if (!state.memberName || state.memberName === "未登録") {
-          state.memberName = profile.displayName || state.memberName;
-        }
-
+        if (!state.memberName || state.memberName === "未登録") state.memberName = profile.displayName || state.memberName;
         setMemberInfo();
       }).catch(() => {});
 
@@ -1919,10 +1570,8 @@
 
   $("btnRefresh").addEventListener("click", () => guarded(async () => {
     clearAllMonthCache();
-    await loadMonth(state.currentYm, { force: true });
-    if (state.statusLoaded && state.currentView === "status") {
-      await loadStatus();
-    }
+    await loadMonth(state.currentYm, { force:true });
+    if (state.statusLoaded && state.currentView === "status") await loadStatus();
     showToast("更新しました");
   }));
 
@@ -1972,29 +1621,13 @@
   $("btnCloseSheet2").addEventListener("click", closeActionSheet);
   $("sheetOverlay").addEventListener("click", closeActionSheet);
 
-  $("btnApplyOff").addEventListener("click", () => guarded(async () => {
-    await postApply("公休");
-  }));
+  $("btnApplyOff").addEventListener("click", () => guarded(async () => { await postApply("公休"); }));
+  $("btnApplyLate").addEventListener("click", () => guarded(async () => { await postApply("遅公"); }));
+  $("btnChangeOff").addEventListener("click", () => guarded(async () => { await postChange("公休"); }));
+  $("btnChangeLate").addEventListener("click", () => guarded(async () => { await postChange("遅公"); }));
+  $("btnCancelRequest").addEventListener("click", () => guarded(async () => { await postCancel(); }));
 
-  $("btnApplyLate").addEventListener("click", () => guarded(async () => {
-    await postApply("遅公");
-  }));
-
-  $("btnChangeOff").addEventListener("click", () => guarded(async () => {
-    await postChange("公休");
-  }));
-
-  $("btnChangeLate").addEventListener("click", () => guarded(async () => {
-    await postChange("遅公");
-  }));
-
-  $("btnCancelRequest").addEventListener("click", () => guarded(async () => {
-    await postCancel();
-  }));
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeActionSheet();
-  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeActionSheet(); });
 
   initialize();
 </script>
