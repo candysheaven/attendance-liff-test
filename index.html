@@ -634,7 +634,7 @@
   <div class="loading" id="loading"><div class="spinner"></div></div>
 
 <script>
-  const UI_VERSION = "2026-04-27-02-point-summary-cachecheck";
+  const UI_VERSION = "2026-05-06-step5a-no-post-month-resync";
   const LIFF_ID = "2009229315-1mExjcwZ";
   const ENDPOINT = "https://attendance-relay.heaven1059-gd.workers.dev";
 
@@ -1308,36 +1308,20 @@
     renderCalendar();
   }
 
+  // Step 5A: 申請/変更/取消の成功後は、月全体のcalendarMonth再取得を行わない。
+  // GAS側が返す updatedDay / summary を使って、表示中の1日分と上部ポイントだけ差分更新する。
+  // この関数は旧コード互換のため残すが、成功時の自動再同期は無効化する。
   async function queueMonthResyncAfterMutation_(ym, date){
-    if (!ym) return;
-    const token = ++state.monthResyncToken;
+    state.monthResyncToken++;
+    return;
+  }
 
-    try {
-      const res = await apiCall("calendarMonth", { ym });
-      if (!res.ok) return;
-      if (token !== state.monthResyncToken) return;
-
-      mergeIdentityFromResponse(res);
-      const refreshedYm = String(res.ym || res.monthData?.ym || ym || state.currentYm);
-      const refreshedMonthData = normalizeMonthData(res);
-      const refreshedSummary = extractSummaryFromResponse(res) || { balance:0, used:0, cap:0 };
-
-      setCachedMonth(refreshedYm, refreshedMonthData, refreshedSummary);
-      if (String(state.currentYm || "") !== String(refreshedYm || "")) return;
-
-      state.currentYm = refreshedYm;
-      state.monthData = refreshedMonthData;
-      state.summary = refreshedSummary;
-
-      if (date) state.selectedDay = refreshedMonthData?.days?.find(d => String(d?.date || "") === String(date)) || null;
-
-      setMemberInfo();
-      renderSummary();
-      renderCalendar();
-
-      if (state.currentView === "status" && state.statusLoaded) loadStatus().catch(() => {});
-    } catch (e) {
-      // ignore background resync error
+  function invalidateStatusAfterMutation_(hasFreshStatusText){
+    if (hasFreshStatusText) return;
+    state.statusLoaded = false;
+    state.statusText = "";
+    if (state.currentView === "status") {
+      $("statusBox").textContent = "申請内容が更新されました。必要に応じて再読込してください。";
     }
   }
 
@@ -1452,6 +1436,8 @@
       state.statusText = res.planText;
       state.statusLoaded = true;
       $("statusBox").textContent = res.planText;
+    } else {
+      invalidateStatusAfterMutation_(false);
     }
 
     if (ym && nextDay) {
@@ -1461,7 +1447,7 @@
       state.monthCache[ym].monthData = cloneData(state.monthData);
       renderSummary();
       renderCalendar();
-      queueMonthResyncAfterMutation_(ym, date);
+      invalidateStatusAfterMutation_(!!res?.planText);
       return;
     }
 
