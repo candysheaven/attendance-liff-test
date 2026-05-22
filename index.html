@@ -634,13 +634,14 @@
   <div class="loading" id="loading"><div class="spinner"></div></div>
 
 <script>
-  const UI_VERSION = "2026-05-06-step5a-no-post-month-resync";
+  const UI_VERSION = "2026-05-23-step5t-warm-mutation-context";
   const LIFF_ID = "2009229315-1mExjcwZ";
   const ENDPOINT = "https://attendance-relay.heaven1059-gd.workers.dev";
 
   const UI_MAX_MONTH_OFFSET = 2;
   const UI_RANGE_TEXT = `当月から${UI_MAX_MONTH_OFFSET}か月先まで操作できます`;
   const UI_ROLE_RANGE_TEXT = `UI対応: 当月〜${UI_MAX_MONTH_OFFSET}か月先`;
+  const WARM_MUTATION_DELAY_MS = 550;
 
   const $ = (id) => document.getElementById(id);
 
@@ -655,6 +656,8 @@
     summary: null,
     statusText: "",
     statusLoaded: false,
+    warmInFlight: {},
+    warmDone: {},
     memberName: "",
     memberRole: "",
     roleLabel: "",
@@ -836,6 +839,47 @@
       return { ok:false, message:`通信エラー\naction=${action}\n${e.message || e}` };
     } finally {
       clearTimeout(timer);
+    }
+  }
+
+  function buildWarmMutationKey(ym){
+    return [state.userId || getBestUserId() || "", state.baseYm || "", state.maxYm || "", ym || ""].join(":");
+  }
+
+  function queueWarmMutationContext(ym, reason = ""){
+    const targetYm = String(ym || state.currentYm || state.baseYm || ymLocal()).slice(0, 7);
+    if (!targetYm || !state.baseYm || !state.maxYm) return;
+    if (compareYm(targetYm, state.baseYm) < 0 || compareYm(targetYm, state.maxYm) > 0) return;
+
+    const key = buildWarmMutationKey(targetYm);
+    if (state.warmInFlight[key]) return;
+
+    // 直近で温め済みなら連打しない。CacheService側TTLより短い、UI内だけの軽い抑制。
+    const last = Number(state.warmDone[key] || 0);
+    if (last && Date.now() - last < 45000) return;
+
+    window.setTimeout(() => warmMutationContext(targetYm, reason, key), WARM_MUTATION_DELAY_MS);
+  }
+
+  async function warmMutationContext(ym, reason = "", key = ""){
+    const targetYm = String(ym || state.currentYm || state.baseYm || ymLocal()).slice(0, 7);
+    const warmKey = key || buildWarmMutationKey(targetYm);
+    if (!targetYm || !getBestUserId()) return;
+    if (state.warmInFlight[warmKey]) return;
+
+    state.warmInFlight[warmKey] = true;
+    try {
+      const res = await apiCall("warmMutationContext", {
+        ym: targetYm,
+        baseYm: state.baseYm || ymLocal(),
+        maxYm: state.maxYm || shiftYm(state.baseYm || ymLocal(), UI_MAX_MONTH_OFFSET),
+        reason: reason || "background"
+      });
+      if (res && res.ok) state.warmDone[warmKey] = Date.now();
+    } catch (e) {
+      // fire-and-forget。失敗してもUI操作は従来どおり動く。
+    } finally {
+      delete state.warmInFlight[warmKey];
     }
   }
 
@@ -1290,6 +1334,7 @@
         setMemberInfo();
         renderSummary();
         renderCalendar();
+        queueWarmMutationContext(ym, "loadMonth-cache");
         return;
       }
     }
@@ -1306,6 +1351,7 @@
     setMemberInfo();
     renderSummary();
     renderCalendar();
+    queueWarmMutationContext(state.currentYm, "loadMonth");
   }
 
   // Step 5A: 申請/変更/取消の成功後は、月全体のcalendarMonth再取得を行わない。
@@ -1448,6 +1494,7 @@
       renderSummary();
       renderCalendar();
       invalidateStatusAfterMutation_(!!res?.planText);
+      queueWarmMutationContext(ym, "afterMutation");
       return;
     }
 
@@ -1455,6 +1502,7 @@
     renderSummary();
     if (date) state.selectedDay = getLiveDayByDate(date);
     if (state.currentView === "status" && state.statusLoaded) loadStatus().catch(() => {});
+    queueWarmMutationContext(state.currentYm, "afterMutation-fallback");
   }
 
   async function guarded(fn){
@@ -1530,6 +1578,7 @@
       else $("statusBox").textContent = "申請状況は表示時に読み込みます。";
 
       $("subtitle").textContent = `LINE連携済み / UI ${UI_VERSION}`;
+      queueWarmMutationContext(state.currentYm, "calendarInit");
 
       profilePromise.then(profile => {
         if (!profile) return;
