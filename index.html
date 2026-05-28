@@ -634,7 +634,7 @@
   <div class="loading" id="loading"><div class="spinner"></div></div>
 
 <script>
-  const UI_VERSION = "2026-05-28-step5v-response-fast-marker";
+  const UI_VERSION = "2026-05-28-step5w-lock-retry-sync-guard";
   const LIFF_ID = "2009229315-1mExjcwZ";
   const ENDPOINT = "https://attendance-relay.heaven1059-gd.workers.dev";
 
@@ -842,6 +842,39 @@
       clearTimeout(timer);
     }
   }
+
+  function sleep(ms){ return new Promise(resolve => setTimeout(resolve, Math.max(0, Number(ms || 0)))); }
+
+  function isLockBusyResponse(res){
+    if (!res) return false;
+    if (res.lockBusy || res.retryable) return true;
+    const msg = String(res.message || "");
+    return /同期処理中|ロック|lock busy|LockBusy/i.test(msg);
+  }
+
+  async function mutationApiCall(action, payload = {}){
+    let res = await apiCall(action, payload);
+    if (res && !res.ok && isLockBusyResponse(res)) {
+      const waitMs = Math.max(650, Math.min(1800, Number(res.retryAfterMs || 900)));
+      showToast("処理が重なったため、自動で再試行します…");
+      await sleep(waitMs);
+      res = await apiCall(action, { ...payload, uiRetry: true });
+      if (res && !res.ok && isLockBusyResponse(res)) {
+        res.message = "処理が混み合っています。数秒置いてからもう一度操作してください。";
+      }
+    }
+    return res;
+  }
+
+  function setMutationBusy(flag){
+    state.mutationBusy = !!flag;
+    if (!flag) return;
+    ["btnApplyOff","btnApplyLate","btnChangeOff","btnChangeLate","btnCancelRequest"].forEach(id => {
+      const el = $(id);
+      if (el) el.disabled = true;
+    });
+  }
+
 
   function buildWarmMutationKey(ym){
     return [state.userId || getBestUserId() || "", state.baseYm || "", state.maxYm || "", ym || ""].join(":");
@@ -1205,6 +1238,10 @@
   }
 
   function openActionSheet(day){
+    if (state.mutationBusy) {
+      showToast("処理中です。完了まで少しお待ちください。");
+      return;
+    }
     const ownKind = String(day?.ownKind || "");
     const badge = String(day?.badge || "").trim();
     const disabledReason = String(day?.disabledReason || "").trim();
@@ -1411,9 +1448,9 @@
     if (!state.selectedDay?.date) return;
     const targetDate = state.selectedDay.date;
     const targetYm = targetDate.slice(0, 7);
-    state.mutationBusy = true;
+    setMutationBusy(true);
     try {
-      const res = await apiCall("apply", { kind, date: targetDate, memo:"" });
+      const res = await mutationApiCall("apply", { kind, date: targetDate, memo:"" });
       if (!res.ok) {
         await reloadMonthAfterMutationFallback_(targetYm, targetDate);
         throw new Error(res.message || "申請に失敗しました。");
@@ -1422,7 +1459,8 @@
 ${kind} ${targetDate}`);
       await afterMutation(res, { op:"apply", kind, date:targetDate });
     } finally {
-      state.mutationBusy = false;
+      setMutationBusy(false);
+      if ($("actionSheet").classList.contains("show") && state.selectedDay) openActionSheet(state.selectedDay);
     }
   }
 
@@ -1430,9 +1468,9 @@ ${kind} ${targetDate}`);
     if (!state.selectedDay?.date) return;
     const targetDate = state.selectedDay.date;
     const targetYm = targetDate.slice(0, 7);
-    state.mutationBusy = true;
+    setMutationBusy(true);
     try {
-      const res = await apiCall("change", { kind, date: targetDate });
+      const res = await mutationApiCall("change", { kind, date: targetDate });
       if (!res.ok) {
         await reloadMonthAfterMutationFallback_(targetYm, targetDate);
         throw new Error(res.message || "変更に失敗しました。");
@@ -1441,7 +1479,8 @@ ${kind} ${targetDate}`);
 ${targetDate}`);
       await afterMutation(res, { op:"change", kind, date:targetDate });
     } finally {
-      state.mutationBusy = false;
+      setMutationBusy(false);
+      if ($("actionSheet").classList.contains("show") && state.selectedDay) openActionSheet(state.selectedDay);
     }
   }
 
@@ -1449,9 +1488,9 @@ ${targetDate}`);
     if (!state.selectedDay?.date) return;
     const targetDate = state.selectedDay.date;
     const targetYm = targetDate.slice(0, 7);
-    state.mutationBusy = true;
+    setMutationBusy(true);
     try {
-      const res = await apiCall("cancel", { date: targetDate });
+      const res = await mutationApiCall("cancel", { date: targetDate });
       if (!res.ok) {
         await reloadMonthAfterMutationFallback_(targetYm, targetDate);
         throw new Error(res.message || "取消に失敗しました。");
@@ -1460,7 +1499,8 @@ ${targetDate}`);
 ${targetDate}`);
       await afterMutation(res, { op:"cancel", kind:"", date:targetDate });
     } finally {
-      state.mutationBusy = false;
+      setMutationBusy(false);
+      if ($("actionSheet").classList.contains("show") && state.selectedDay) openActionSheet(state.selectedDay);
     }
   }
 
