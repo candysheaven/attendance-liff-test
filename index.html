@@ -634,7 +634,7 @@
   <div class="loading" id="loading"><div class="spinner"></div></div>
 
 <script>
-  const UI_VERSION = "2026-05-28-step5u7-sync-state-mem-guard";
+  const UI_VERSION = "2026-05-28-step5v-response-fast-marker";
   const LIFF_ID = "2009229315-1mExjcwZ";
   const ENDPOINT = "https://attendance-relay.heaven1059-gd.workers.dev";
 
@@ -658,6 +658,7 @@
     statusLoaded: false,
     warmInFlight: {},
     warmDone: {},
+    mutationBusy: false,
     memberName: "",
     memberRole: "",
     roleLabel: "",
@@ -847,6 +848,7 @@
   }
 
   function queueWarmMutationContext(ym, reason = ""){
+    if (state.mutationBusy) return;
     const targetYm = String(ym || state.currentYm || state.baseYm || ymLocal()).slice(0, 7);
     if (!targetYm || !state.baseYm || !state.maxYm) return;
     if (compareYm(targetYm, state.baseYm) < 0 || compareYm(targetYm, state.maxYm) > 0) return;
@@ -862,6 +864,7 @@
   }
 
   async function warmMutationContext(ym, reason = "", key = ""){
+    if (state.mutationBusy) return;
     const targetYm = String(ym || state.currentYm || state.baseYm || ymLocal()).slice(0, 7);
     const warmKey = key || buildWarmMutationKey(targetYm);
     if (!targetYm || !getBestUserId()) return;
@@ -1408,39 +1411,57 @@
     if (!state.selectedDay?.date) return;
     const targetDate = state.selectedDay.date;
     const targetYm = targetDate.slice(0, 7);
-    const res = await apiCall("apply", { kind, date: targetDate, memo:"" });
-    if (!res.ok) {
-      await reloadMonthAfterMutationFallback_(targetYm, targetDate);
-      throw new Error(res.message || "申請に失敗しました。");
+    state.mutationBusy = true;
+    try {
+      const res = await apiCall("apply", { kind, date: targetDate, memo:"" });
+      if (!res.ok) {
+        await reloadMonthAfterMutationFallback_(targetYm, targetDate);
+        throw new Error(res.message || "申請に失敗しました。");
+      }
+      showToast(`受付OK
+${kind} ${targetDate}`);
+      await afterMutation(res, { op:"apply", kind, date:targetDate });
+    } finally {
+      state.mutationBusy = false;
     }
-    showToast(`受付OK\n${kind} ${targetDate}`);
-    await afterMutation(res, { op:"apply", kind, date:targetDate });
   }
 
   async function postChange(kind){
     if (!state.selectedDay?.date) return;
     const targetDate = state.selectedDay.date;
     const targetYm = targetDate.slice(0, 7);
-    const res = await apiCall("change", { kind, date: targetDate });
-    if (!res.ok) {
-      await reloadMonthAfterMutationFallback_(targetYm, targetDate);
-      throw new Error(res.message || "変更に失敗しました。");
+    state.mutationBusy = true;
+    try {
+      const res = await apiCall("change", { kind, date: targetDate });
+      if (!res.ok) {
+        await reloadMonthAfterMutationFallback_(targetYm, targetDate);
+        throw new Error(res.message || "変更に失敗しました。");
+      }
+      showToast(`変更OK
+${targetDate}`);
+      await afterMutation(res, { op:"change", kind, date:targetDate });
+    } finally {
+      state.mutationBusy = false;
     }
-    showToast(`変更OK\n${targetDate}`);
-    await afterMutation(res, { op:"change", kind, date:targetDate });
   }
 
   async function postCancel(){
     if (!state.selectedDay?.date) return;
     const targetDate = state.selectedDay.date;
     const targetYm = targetDate.slice(0, 7);
-    const res = await apiCall("cancel", { date: targetDate });
-    if (!res.ok) {
-      await reloadMonthAfterMutationFallback_(targetYm, targetDate);
-      throw new Error(res.message || "取消に失敗しました。");
+    state.mutationBusy = true;
+    try {
+      const res = await apiCall("cancel", { date: targetDate });
+      if (!res.ok) {
+        await reloadMonthAfterMutationFallback_(targetYm, targetDate);
+        throw new Error(res.message || "取消に失敗しました。");
+      }
+      showToast(`取消OK
+${targetDate}`);
+      await afterMutation(res, { op:"cancel", kind:"", date:targetDate });
+    } finally {
+      state.mutationBusy = false;
     }
-    showToast(`取消OK\n${targetDate}`);
-    await afterMutation(res, { op:"cancel", kind:"", date:targetDate });
   }
 
   async function afterMutation(res, mutation){
